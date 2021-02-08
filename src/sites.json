@@ -1,0 +1,11 @@
+{
+	"news.ycombinator.com": {
+		"links": ".itemlist .storylink",
+		"parents": "return [\n\tlink.parentElement.parentElement,\n\tlink.parentElement.parentElement.nextElementSibling,\n\tlink.parentElement.parentElement.nextElementSibling.nextElementSibling\n];"
+	},
+	"reddit.com": {
+		"links": ".thing.link[data-context=\"listing\"] > .entry a.title",
+		"parents": "return [ link.closest('.thing') ];",
+		"style": ".seen, .dupe { overflow: hidden; } .new.message { box-shadow: none; }"
+	}
+}

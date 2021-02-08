@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<style>
+			.child-option {
+				margin-left: 30px;
+			}
+		</style>
+	</head>
+	<body>
+		<label class="browser-style" title="If this option is unchecked, the icon will have to be used to activate the extension and data permission will not be requested."><input id="activateAutomatically" type="checkbox" checked /><span>Activate automatically after permission is granted</span></label>
+		<label class="browser-style"><input id="useBrowserHistory" type="radio" name="historyProvider" value="browser" /><span>Track seen urls based on the browser's history</span></label>
+		<label class="browser-style"><input id="useExtensionHistory" type="radio" name="historyProvider" value="indexedDB" checked /><span>Track seen urls within the extension's data</span></label>
+		<label class="browser-style child-option"><input id="trackSeparately" type="checkbox" /><span>Track seen urls separately for each site</span></label>
+		<span class="browser-style child-option">Mark url as seen on:
+			<label class="browser-style"><input id="markSeenOnClick" type="radio" name="seenTrigger" value="click" checked/><span>click</span></label>
+			<label class="browser-style"><input id="markSeenOnHover" type="radio" name="seenTrigger" value="hover"/><span>hover</span></label>
+		</span>
+		<label>Custom style:</label>
+		<textarea id="globalStyle"></textarea>
+		<script src="js/options.js"></script>
+	</body>
+</html>

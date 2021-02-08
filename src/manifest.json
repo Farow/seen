@@ -1,0 +1,46 @@
+{
+  "manifest_version": 2,
+  "name": "Seen",
+  "version": "0.1",
+
+  "description": "Fades seen links.",
+
+  "icons": {
+    "48": "icons/seen 48x48.png"
+  },
+
+  "commands": {
+    "_execute_page_action": {
+      "suggested_key": {
+        "default": "Alt+Z"
+      },
+      "description": "Toggle action button"
+    }
+  },
+
+  "page_action": {
+    "browser_style": true,
+    "default_icon": {
+      "16": "icons/seen action 16x16.png"
+    },
+    "default_title": "Seen",
+    "show_matches": ["*://*/*"]
+  },
+
+  "optional_permissions": ["*://*/*", "history"],
+  "background": {
+    "scripts": ["js/history.js", "js/config.js", "js/background.js"]
+  },
+  "options_ui": {
+    "page": "options.html",
+    "browser_style": true
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{af49fae7-be53-495b-b106-33c18ce0d102}",
+      "strict_min_version": "59.0"
+    }
+  },
+
+  "permissions": ["activeTab", "storage"]
+}
