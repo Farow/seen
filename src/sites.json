@@ -1,4 +1,8 @@
 {
+	"lobste.rs": {
+		"links": ".u-url",
+		"parents": "return [ link.closest('.story') ]"
+	},
 	"news.ycombinator.com": {
 		"links": ".itemlist .storylink",
 		"parents": "return [\n\tlink.parentElement.parentElement,\n\tlink.parentElement.parentElement.nextElementSibling,\n\tlink.parentElement.parentElement.nextElementSibling.nextElementSibling\n];"
