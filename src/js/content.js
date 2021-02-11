@@ -171,7 +171,8 @@
 	}
 
 	function setSeen(event) {
-		const link = event.target;
+		// If the link we set a listener on contains a child element, event.target will be that element.
+		const link = event.target.closest('a');
 		removeEventListener(link);
 		browser.runtime.sendMessage({ command: "setSeen", url: link.href, hostname: site.hostname })
 		.then(result => markSeen(link))

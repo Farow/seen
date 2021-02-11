@@ -8,8 +8,8 @@
 		"parents": "return [\n\tlink.parentElement.parentElement,\n\tlink.parentElement.parentElement.nextElementSibling,\n\tlink.parentElement.parentElement.nextElementSibling.nextElementSibling\n];"
 	},
 	"reddit.com": {
-		"links": ".thing.link[data-context=\"listing\"] > .entry a.title",
-		"parents": "return [ link.closest('.thing') ];",
+		"links": ".thing.link[data-context=\"listing\"] > .entry a.title, .Post a[data-click-id=\"body\"]",
+		"parents": "return [ link.closest('.thing') || link.closest('.Post') ];",
 		"style": ".seen, .dupe { overflow: hidden; } .new.message { box-shadow: none; }"
 	}
 }
