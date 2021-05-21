@@ -23,6 +23,7 @@ const elements = {
 	trackSeparatelyInput: document.getElementById("trackSeparately"),
 	markSeenOnClickInput: document.getElementById("markSeenOnClick"),
 	markSeenOnHoverInput: document.getElementById("markSeenOnHover"),
+	markSeenOnFocusInput: document.getElementById("markSeenOnFocus"),
 	markAllSeenOnUnloadInput: document.getElementById("markAllSeenOnUnload"),
 	globalStyleInput: document.getElementById("globalStyle"),
 };
@@ -47,6 +48,10 @@ function restoreOptions() {
 		elements.markSeenOnHoverInput.checked = true;
 	}
 
+	if (config.markSeenOnFocus) {
+		elements.markSeenOnFocusInput.checked = true;
+	}
+
 	if (config.markAllSeenOnUnload) {
 		elements.markAllSeenOnUnloadInput.checked = true;
 	}
@@ -62,6 +67,7 @@ function addListeners() {
 	elements.trackSeparatelyInput.addEventListener("change", optionChanged);
 	elements.markSeenOnClickInput.addEventListener("change", optionChanged);
 	elements.markSeenOnHoverInput.addEventListener("change", optionChanged);
+	elements.markSeenOnFocusInput.addEventListener("change", optionChanged);
 	elements.markAllSeenOnUnloadInput.addEventListener("change", optionChanged);
 	elements.globalStyleInput.addEventListener("change", optionChanged);
 }
@@ -121,6 +127,7 @@ function defaultConfig() {
 		historyProvider: "indexedDB",
 		trackSeparately: false,
 		markSeenOn: "click",
+		markSeenOnFocus: false,
 		markAllSeenOnUnload: false,
 	};
 }

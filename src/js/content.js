@@ -229,6 +229,11 @@
 		const event = site.markSeenOn == "click" ? "mouseup" : "mouseover";
 		link.addEventListener(event, setSeen);
 		listeners.push({ link: link, event: event, callback: setSeen, });
+
+		if (site.markSeenOnFocus) {
+			link.addEventListener("focusin", setSeen);
+			listeners.push({ link: link, event: "focusin", callback: setSeen, });
+		}
 	}
 
 	function removeEventListener(link) {

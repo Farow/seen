@@ -26,6 +26,7 @@ const Config = (() => {
 		historyProvider: "indexedDB",
 		trackSeparately: false,
 		markSeenOn: "click",
+		markSeenOnFocus: false,
 		markAllSeenOnUnload: false,
 		globalStyle: ".seen {\n\topacity: .5;\n}\n\n.hidden { display: none; }\n\n.new {\n\tbox-shadow: -2px 0px 0px 0px hsl(210, 100%, 75%);\n\ttransition: opacity 2s cubic-bezier(.07, .95, 0, 1);\n}\n\n.new.seen {\n\tbox-shadow: none;\n\ttransition: opacity 2s cubic-bezier(.07, .95, 0, 1);\n}",
 	};
