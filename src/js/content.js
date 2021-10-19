@@ -247,6 +247,7 @@
 	function addStyle() {
 		if (document.head == null) {
 			document.addEventListener("DOMContentLoaded", addStyle);
+			return;
 		}
 
 		const style = createStyleElement();
