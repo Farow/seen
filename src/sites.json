@@ -4,7 +4,7 @@
 		"parents": "return [ link.closest('.story') ]"
 	},
 	"news.ycombinator.com": {
-		"links": ".itemlist .storylink",
+		"links": ".itemlist .titlelink",
 		"parents": "return [\n\tlink.parentElement.parentElement,\n\tlink.parentElement.parentElement.nextElementSibling,\n\tlink.parentElement.parentElement.nextElementSibling.nextElementSibling\n];"
 	},
 	"reddit.com": {
