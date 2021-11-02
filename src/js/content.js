@@ -16,15 +16,80 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-(async () => {
-	const site = await browser.runtime.sendMessage({ command: "getSiteConfig" });
+const BackgroundPort = (() => {
+	let id = 0;
+	let port;
+	const awaitingResponse = { };
+	const listeners = [ ];
 
-	if (!site.isSupported) {
-		notifyUnload();
-		alert("This site is not supported.");
-		return;
+	function addListener(callback) {
+		listeners.push(callback);
 	}
 
+	function connect() {
+		port = browser.runtime.connect({ name: "contentToBackground" });
+
+		if (port instanceof Object) {
+			port.onMessage.addListener(messageReceived);
+			port.onDisconnect.addListener(portDisconnected);
+		}
+	}
+
+	function disconnect() {
+		port.disconnect();
+	}
+
+	function portDisconnected() {
+		console.warn("Port disconnected:", port, ...arguments);
+	}
+
+	function postMessage(data) {
+		return new Promise((resolve, reject) => {
+			if (port instanceof Object) {
+				awaitingResponse[++id] = { resolve: resolve, reject: reject };
+				port.postMessage({ id: id, data: data });
+			}
+			else {
+				reject("Port not connected.");
+			}
+		});
+	}
+
+	function messageReceived(message) {
+		/* Handle response. */
+		if (message.hasOwnProperty('id') && awaitingResponse.hasOwnProperty(message.id)) {
+			const promise = awaitingResponse[message.id];
+			delete awaitingResponse[message.id];
+
+			if (message.hasOwnProperty('error')) {
+				promise.reject(message.error);
+				return;
+			}
+
+			promise.resolve(message.data);
+			return;
+		}
+
+		/* Handle messages with no id. */
+		if (message.hasOwnProperty('command')) {
+			const args = message.hasOwnProperty('args') ? message.args : [ ];
+			for (const listener of listeners) {
+				if (listener instanceof Function) {
+					listener(message.command, ...args);
+				}
+			}
+		}
+	}
+
+	return {
+		addListener: addListener,
+		connect: connect,
+		disconnect: disconnect,
+		postMessage: postMessage,
+	};
+})();
+
+(async () => {
 	if (window.seen) {
 		alert("The content script has already been loaded.");
 		return;
@@ -32,216 +97,126 @@
 
 	window.seen = true;
 
-	const listeners = [ ];
-	const findParents = createFindParentsFunction();
+	BackgroundPort.connect();
+
+	const site = await BackgroundPort.postMessage({ command: 'getSiteConfig' });
+	const links = [ ];
+
+	if (!site.isSupported) {
+		BackgroundPort.disconnect();
+		alert("This site is not supported.");
+		return;
+	}
+
+	const findParents = new Function('link', site.parents);
 
 	init();
 
 	function init() {
-		const port = browser.runtime.connect({ name: "contentToBackground" });
-		port.onMessage.addListener(messageReceived);
-
 		const links = document.querySelectorAll(site.links);
 		const checkSeenPromises = [];
 
-		for (let link of links) {
-			const promise = checkSeen(link);
-			checkSeenPromises.push(promise);
+		for (const link of links) {
+			linkAdded(link);
 		}
 
-		const observer = new MutationObserver(mutationCallback);
-		observer.observe(document, { subtree: true, childList: true });
+		const observer = new PageObserver(site.links, linkAdded);
+		addStyle();
 
-		/* add the style after every seen link has been marked, in order to apply it on all the links at the same time */
-		Promise.all(checkSeenPromises).then(addStyle);
-		window.addEventListener("unload", notifyUnload);
+		BackgroundPort.addListener(onMessage);
+		updateUnloadListener();
 	}
 
-	/* TODO: handle removed links */
-	function mutationCallback(mutations) {
-		for (let mutation of mutations) {
-			for (let node of mutation.addedNodes) {
-				if (node.nodeType == Node.ELEMENT_NODE) {
-					checkForValidLinks(node);
-				}
-			}
-		}
+	function linkAdded(element) {
+		var link = new Link(element);
+		link.checkSeen();
+		links.push(link);
 	}
 
-	function checkForValidLinks(element) {
-		if (element == null) {
-			return;
-		}
-
-		if (element.matches(site.links)) {
-			checkSeen(element);
-		}
-
-		/* don't check for children if still loading */
-		if (document.readyState == "loading") {
-			return;
-		}
-
-		for (let child of element.children) {
-			checkForValidLinks(child);
-		}
-	}
-
-	function createFindParentsFunction() {
-		return new Function('link', site.parents);
-	}
-
-	function messageReceived(message) {
-		switch (message.command) {
-			case "seenUrl":
-				commandSeenUrl(message);
+	function onMessage(command, ...args) {
+		switch (command) {
+			case "optionChanged":
+				onOptionChanged(...args);
 				break;
-			case "configChanged":
-				commandConfigChanged(message);
-				break;
+
 			case "pageAction":
-				commandPageAction();
+				onPageAction(...args);
 				break;
+
+			case "seenUrl":
+				onSeenUrl(...args);
+				break;
+
 			default:
-				console.warn("Unknown message: ", message);
+				console.warn("Unhandled command: ", command);
+		}
+	}
+
+	function onOptionChanged(option, value) {
+		site[option] = value;
+
+		switch (option) {
+			case "activateAutomatically":
+				break;
+
+			case "globalStyle":
+				updateGlobalStyle(value);
+				break;
+
+			case "historyProvider":
+			case "markSeenOn":
+			case "markSeenOnFocus":
+				links.map(l => l.updateListener());
+				break;
+
+			case "markAllSeenOnUnload":
+				updateUnloadListener();
+				break;
+
+			default:
+				console.warn("Unhandled option change:", option);
+		}
+	}
+
+	function onPageAction() {
+		const anyLinksHidden = links.map(l => l.hideIfSeen()).some(hidden => hidden);
+
+		if (!anyLinksHidden) {
+			links.map(l => l.show());
 		}
 	}
 
 	/* Mark seen urls from other tabs. */
-	function commandSeenUrl(message) {
-		if (site.trackSeparately && message.hostname != site.hostname) {
+	function onSeenUrl(url, hostname) {
+		if (site.trackSeparately && hostname != site.hostname) {
 			return;
 		}
 
-		for (let listener of listeners) {
-			if (listener.link.href == message.url) {
-				removeEventListener(listener.link);
-				markSeen(listener.link);
-			}
-		}
+		links.filter(l => l.element.href == url).map(l => l.markSeen());
 	}
 
-	function commandConfigChanged(message) {
-		site[message.option] = message.value;
+	function updateGlobalStyle(newStyle) {
+		const style = document.getElementById("seenStylesheet");
+		const newNode = document.createTextNode(newStyle);
 
-		/* TODO: handle more cases */
-		if (message.option == "markSeenOn") {
-			const oldListeners = listeners.splice(0, listeners.length);
-
-			for (let listener of oldListeners) {
-				listener.link.removeEventListener(listener.event, listener.callback);
-				addEventListener(listener.link);
-			}
-		}
+		requestAnimationFrame(() => {
+			style.firstChild.remove();
+			style.insertBefore(newNode, style.firstChild);
+		});
 	}
 
-	function commandPageAction() {
-		const links = document.querySelectorAll(site.links);
-		let markedHiddenAny = false;
-
-		for (const link of links) {
-			if (markHiddenIfSeen(link)) {
-				markedHiddenAny = true;
-			}
+	function updateUnloadListener() {
+		if (site.markAllSeenOnUnload) {
+			window.addEventListener("unload", notifyUnload);
 		}
-
-		if (!markedHiddenAny) {
-			for (const link of links) {
-				unmarkHidden(link);
-			}
+		else {
+			window.removeEventListener("unload", notifyUnload);
 		}
 	}
 
 	function notifyUnload() {
-		browser.runtime.sendMessage({ command: "unload" });
-	}
-
-	function checkSeen(link) {
-		browser.runtime.sendMessage({ command: "checkSeen", url: link.href, hostname: site.hostname })
-		.then(visited => {
-			if (visited) {
-				markSeen(link);
-			}
-			else {
-				markNew(link);
-				addEventListener(link);
-			}
-		})
-		.catch(error => console.error("checkSeen error: ", error, link));
-	}
-
-	function setSeen(event) {
-		// If the link we set a listener on contains a child element, event.target will be that element.
-		const link = event.target.closest('a');
-		removeEventListener(link);
-		browser.runtime.sendMessage({ command: "setSeen", url: link.href, hostname: site.hostname })
-		.then(result => markSeen(link))
-		.catch(error => console.error("setSeen error: ", error));
-	}
-
-	function markSeen(link) {
-		addClass(link, "seen");
-	}
-
-	function unmarkHidden(link) {
-		const parents = findParents(link);
-
-		for (const parent of parents) {
-			parent.classList.remove("hidden");
-		}
-	}
-
-	function markHiddenIfSeen(link) {
-		const parents = findParents(link);
-
-		if (!parents[0].classList.contains("seen") || parents[0].classList.contains("hidden")) {
-			return false;
-		}
-
-		for (const parent of parents) {
-			parent.classList.add("hidden");
-		}
-
-		return true;
-	}
-
-	function addClass(link, className) {
-		const parents = findParents(link);
-
-		for (const parent of parents) {
-			parent.classList.add(className);
-		}
-	}
-
-	function markNew(link) {
-		const parents = findParents(link);
-
-		for (const parent of parents) {
-			parent.classList.add("new");
-		}
-	}
-
-	function addEventListener(link) {
-		if (site.historyProvider == "browser") {
-			return;
-		}
-
-		const event = site.markSeenOn == "click" ? "mouseup" : "mouseover";
-		link.addEventListener(event, setSeen);
-		listeners.push({ link: link, event: event, callback: setSeen, });
-
-		if (site.markSeenOnFocus) {
-			link.addEventListener("focusin", setSeen);
-			listeners.push({ link: link, event: "focusin", callback: setSeen, });
-		}
-	}
-
-	function removeEventListener(link) {
-		var listenerIndex = listeners.findIndex(l => l.link == link);
-		var listener = listeners[listenerIndex];
-
-		link.removeEventListener(listener.eventName, listener.callback);
-		listeners.splice(listenerIndex, 1);
+		const newUrls = links.filter(l => l.isNew).map(l => l.element.href);
+		BackgroundPort.postMessage({ command: "unload", args: [ newUrls ], });
 	}
 
 	function addStyle() {
@@ -251,11 +226,12 @@
 		}
 
 		const style = createStyleElement();
-
 		style.appendChild(document.createTextNode(site.globalStyle));
 		style.appendChild(document.createTextNode(site.style));
 
-		document.head.appendChild(style);
+		requestAnimationFrame(() => {
+			document.head.appendChild(style);
+		});
 	}
 
 	function createStyleElement() {
@@ -265,4 +241,144 @@
 
 		return style;
 	}
+
+	function Link(element) {
+		let visited;
+		const listeners = [ ];
+
+		/* public methods */
+		function checkSeen() {
+			return BackgroundPort.postMessage({ command: "checkSeen", args: [ element.href, site.hostname ] })
+			.then(result => {
+				visited = result;
+				if (visited) {
+					addClass("seen");
+				}
+				else {
+					addClass("new");
+					addEventListener();
+				}
+			})
+			.catch(error => console.error("checkSeen error: ", error, element));
+		}
+
+		function hideIfSeen() {
+			if (visited && !containsClass("hidden")) {
+				addClass("hidden");
+				return true;
+			}
+
+			return false;
+		}
+
+		function markSeen() {
+			visited = true;
+			removeEventListener();
+			addClass("seen");
+		}
+
+		function show() {
+			removeClass("hidden");
+		}
+
+		function updateListener() {
+			removeEventListener();
+
+			if (!visited) {
+				addEventListener();
+			}
+		}
+
+		/* private methods */
+		function addClass(className) {
+			const parents = findParents(element);
+
+			requestAnimationFrame(() => {
+				for (const parent of parents) {
+					parent.classList.add(className);
+				}
+			});
+		}
+
+		function addEventListener() {
+			if (site.historyProvider == "browser") {
+				return;
+			}
+
+			const event = site.markSeenOn == "click" ? "mouseup" : "mouseover";
+			element.addEventListener(event, setSeen);
+			listeners.push({ element: element, event: event, callback: setSeen, });
+
+			if (site.markSeenOnFocus) {
+				element.addEventListener("focusin", setSeen);
+				listeners.push({ element: element, event: "focusin", callback: setSeen, });
+			}
+		}
+
+		function containsClass(className) {
+			return findParents(element).some(p => p.classList.contains(className));
+		}
+
+		function removeClass(className) {
+			const parents = findParents(element);
+
+			requestAnimationFrame(() => {
+				for (const parent of parents) {
+					parent.classList.remove(className);
+				}
+			});
+		}
+
+		function removeEventListener() {
+			for (const listener of listeners) {
+				element.removeEventListener(listener.event, listener.callback);
+			}
+
+			listeners.length = 0;
+		}
+
+		function setSeen(event) {
+			removeEventListener();
+			BackgroundPort.postMessage({ command: "setSeen", args: [ element.href, site.hostname ] })
+			.then(result => markSeen())
+			.catch(error => { addClass("error"); console.error("setSeen error: ", error); });
+		}
+
+		return {
+			get element() { return element; },
+			get isNew() { return listeners.size != 0; },
+			checkSeen: checkSeen,
+			hideIfSeen: hideIfSeen,
+			markSeen: markSeen,
+			show: show,
+			updateListener: updateListener,
+		};
+	}
 })();
+
+function PageObserver(query, callback) {
+	const observer = new MutationObserver(mutationCallback);
+	observer.observe(document, { subtree: true, childList: true });
+
+	/* TODO: handle removed links */
+	function mutationCallback(mutations) {
+		for (const mutation of mutations) {
+			for (const node of mutation.addedNodes) {
+				if (node.nodeType == Node.ELEMENT_NODE) {
+					checkForValidLinks(node);
+				}
+			}
+		}
+	}
+
+	function checkForValidLinks(element) {
+		if (element.matches(query) && callback instanceof Function) {
+			callback(element);
+			return;
+		}
+
+		for (const child of element.children) {
+			checkForValidLinks(child);
+		}
+	}
+}

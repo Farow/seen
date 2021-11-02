@@ -40,8 +40,8 @@ class SeenEvent {
 	}
 
 	raiseEvent(...args) {
-		for (let listener of this.listeners) {
-			listener.apply(...args);
+		for (const listener of this.listeners) {
+			listener(...args);
 		}
 	}
 }
@@ -99,7 +99,9 @@ const History = (() => {
 		}
 
 		if (provider.setSeen instanceof Function) {
-			return provider.setSeen(url, hostname);
+			return provider
+				.setSeen(url, hostname)
+				.then((result) => { raiseEvent(url, hostname); return result });
 		}
 
 		return false;

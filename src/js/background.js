@@ -16,195 +16,268 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-(() => {
-	const commands = {
-		"getConfig": commandGetConfig,
-		"configChanged": commandConfigChanged,
-		"getSiteConfig": commandGetSiteConfig,
-		"checkSeen": commandCheckSeen,
-		"setSeen": commandSetSeen,
-		"unload": commandUnload,
-	};
-
-	const grantedPermissions = { };
-	let activeTab = null;
-	const activeTabs = { };
+const ContentScriptPorts = (() => {
 	const ports = [ ];
 
-	/* await for Config and grantedPermissions */
-	Promise.all([
-		browser.permissions.getAll().then(permissions => Object.assign(grantedPermissions, permissions)),
-		Config.ready().catch(error => console.error("Config error: ", error)),
-	])
-	.then(init);
+	function add(port) {
+		ports.push(new ContentScriptPort(port));
+	}
 
-	function init() {
-		for (const origin of grantedPermissions.origins) {
-			registerContentScript(origin);
+	function containsTab(tabId) {
+		return ports.some(c => c.tabId == tabId);
+	}
+
+	function notifyAll(message) {
+		ports.map(c => c.notify(message));
+	}
+
+	function notifyTab(tabId, message) {
+		const contentScript = ports.find(c => c.tabId == tabId);
+
+		if (!(contentScript instanceof Object)) {
+			console.error("Could not find content script with tab.id: ", tabId);
+			return;
 		}
 
-		History.addListener(notifySeenUrl);
-
-		browser.runtime.onConnect.addListener(portConnected);
-		browser.runtime.onMessage.addListener(messageReceived);
-		browser.pageAction.onClicked.addListener(actionClick);
+		contentScript.notify(message);
 	}
 
-	function portConnected(port) {
-		ports.push(port);
-		/*
-			No content script sends messages with ports at the moment.
-			TODO: use port for unload?
-		*/
-		//port.onMessage.addListener((message) => {  });
-		port.onDisconnect.addListener(portDisconnected);
+	function remove(port) {
+		const index = ports.findIndex(c => c.tabId == port.sender.tab.id);
+
+		if (index < 0) {
+			console.warn("Port has not been added.");
+			return
+		}
+
+		ports.splice(index, 1);
 	}
 
-	function portDisconnected(port) {
-		const portIndex = ports.indexOf(port);
-		if (portIndex != -1) {
-			ports.splice(portIndex, 1);
+	return {
+		add: add,
+		containsTab: containsTab,
+		notifyAll: notifyAll,
+		notifyTab: notifyTab,
+		remove: remove,
+	};
+})();
+
+/* await for grantedPermissions and Config */
+Promise.all([
+	browser.permissions.getAll(),
+	Config.ready().catch(error => console.error("Config error: ", error)),
+])
+.then(init);
+
+function init(result) {
+	const grantedPermissions = result[0];
+
+	for (const origin of grantedPermissions.origins) {
+		registerContentScript(origin);
+	}
+
+	browser.runtime.onConnect.addListener(portConnected);
+	browser.pageAction.onClicked.addListener(actionClick);
+}
+
+function registerContentScript(origin) {
+	/*
+		Note: The content script seems to only get injected after a page reload,
+		in contrast to using the manifest when they are added as soon as the extension is loaded.
+	*/
+
+	browser.contentScripts.register({
+		matches: [ origin ],
+		js: [{ file: "/js/content.js" }],
+		runAt: "document_start"
+	})
+	.catch(error => console.warn("Could not register content script: ", origin, error));
+}
+
+function portConnected(port) {
+	switch (port.name) {
+		case "contentToBackground":
+			ContentScriptPorts.add(port);
+			break;
+
+		case "options":
+			new OptionsPort(port, onOptionChanged);
+			break;
+
+		default:
+			console.warn("Unknown port connection:", port);
+	}
+}
+
+function onOptionChanged(option, value) {
+	if (option == "historyProvider") {
+		History.setProvider(value);
+	}
+
+	Config.options[option] = value;
+	ContentScriptPorts.notifyAll({ command: "optionChanged", args: [ option, value], });
+}
+
+function actionClick(tab, clickData) {
+	/* handle middle click */
+	if (clickData.button == 1) {
+		browser.runtime.openOptionsPage();
+		return;
+	}
+
+	const hostname = new URL(tab.url).hostname;
+
+	if (ContentScriptPorts.containsTab(tab.id)) {
+		ContentScriptPorts.notifyTab(tab.id, { command: "pageAction" });
+		return;
+	}
+
+	if (Config.getSiteConfig(hostname).isSupported) {
+		if (Config.options.activateAutomatically) {
+			browser.permissions.request({ origins: [ `*://${ hostname }/*` ] })
+			.then(granted => {
+				if (granted) {
+					registerContentScript(`*://${ hostname }/*`);
+				}
+			});
 		}
 	}
-
-	function registerContentScript(origin) {
-		/*
-			Note: The content script seems to only get injected after a page reload,
-			in contrast to using the manifest when they're added when the extension is loaded.
-		*/
-
-		browser.contentScripts.register({
-			matches: [ origin ],
-			js: [{ file: "/js/content.js" }],
-			runAt: "document_start"
-		})
-		.catch(error => console.warn("Could not register content script: ", origin, error));
+	else {
+		browser.pageAction.hide(tab.id);
 	}
 
-	function messageReceived(message, sender, sendResponse) {
-		const hostname = new URL(sender.url).hostname;
-		let output = false;
+	browser.tabs.executeScript(tab.id, { file: "/js/content.js" });
+}
 
+function ContentScriptPort(port) {
+	const hostname = new URL(port.sender.tab.url).hostname;
+
+	port.onMessage.addListener(messageReceived);
+	port.onDisconnect.addListener(portDisconnected);
+	History.addListener(onHistoryAdded);
+
+	/* public methods */
+	function notify(message) {
 		try {
-			const commandHandler = commands[message.command];
-
-			if (commandHandler instanceof Function) {
-				return commandHandler(sender, hostname, message);
-			}
+			port.postMessage(message);
 		}
-		catch (ex) {
-			console.error("Error while executing command: ", ex);
-			return Promise.reject(ex);
+		catch (error) {
+			console.error(error);
 		}
-
-		console.warn("Unknown command: ", message);
-		return Promise.reject(new Error("Command not defined."));
 	}
 
-	function commandGetConfig(sender, hostname, message) {
-		return Promise.resolve({ options: Config.options, sites: Config.sites });
+	/* private methods */
+	function onHistoryAdded(...args) {
+		notify({ command: "seenUrl", args: args });
 	}
 
-	function commandConfigChanged(sender, hostname, message) {
-		if (message.option == "historyProvider") {
-			History.setProvider(message.value);
+	function messageReceived(message) {
+		if (message.hasOwnProperty("id") && message.hasOwnProperty("data")) {
+			handleMessage(message.data)
+			.then(result => {
+				port.postMessage({ id: message.id, data: result });
+			})
+			.catch(error => {
+				/* error is casted to a string so it can be cloned. */
+				port.postMessage({ id: message.id, error: error + "", });
+			});
+		}
+		else {
+			console.warn("Content scripts should include a message id and a data parameter.");
+		}
+	}
+
+	function handleMessage(message) {
+		if (!message.hasOwnProperty("command")) {
+			return Promise.reject("No command specified.");
 		}
 
-		Config.options[message.option] = message.value;
-		notifyConfigChanged(message);
+		const args = message.hasOwnProperty("args") ? message.args : [ ];
+
+		switch (message.command) {
+			case "getSiteConfig":
+				return onGetSiteConfig(...args);
+
+			case "checkSeen":
+				return onCheckSeen(...args);
+
+			case "setSeen":
+				return onSetSeen(...args);
+
+			case "unload":
+				return onUnload(...args);
+
+			default:
+				console.warn("Unhandled command:", message.command);
+				return Promise.reject("Unknown command: " + message.command);
+		}
 	}
 
-	function commandGetSiteConfig(sender, hostname, message) {
-		setContentScriptLoaded(sender.tab.id);
+	function onGetSiteConfig() {
 		return Promise.resolve(Config.getSiteConfig(hostname));
 	}
 
-	function commandCheckSeen(sender, hostname, message) {
-		return Config.checkSeen(message.url, message.hostname);
+	function onCheckSeen(url) {
+		return Config.checkSeen(url, hostname);
 	}
 
-	function commandSetSeen(sender, hostname, message) {
-		return Config.setSeen(message.url, message.hostname);
+	function onSetSeen(url) {
+		return Config.setSeen(url, hostname);
 	}
 
-	function commandUnload(sender, hostname, message) {
-		/* sender.tab can be null if it's closed. */
-		if (sender.tab == null) {
-			return false;
+	function onUnload(urls) {
+		for (const url of urls) {
+			Config.setSeen(url, hostname);
 		}
 
-		return setContentScriptUnloaded(sender.tab.id);
+		return Promise.resolve(true);
 	}
 
-	function notifySeenUrl(result, url, hostname) {
-		/*
-			Since we don't have the tabs permission we cannot use browser.tabs.sendMessage outside of messageReceived,
-			even if we know the tab id. We can instead use Port.postMessage when a new url is marked as seen.
-		*/
-
-		for (let port of ports) {
-			port.postMessage({ command: "seenUrl", url: url, hostname: hostname });
-		}
+	function portDisconnected() {
+		ContentScriptPorts.remove(port);
+		History.removeListener(onHistoryAdded);
 	}
 
-	function notifyConfigChanged(message) {
-		for (let port of ports) {
-			port.postMessage(message);
-		}
-	}
+	return {
+		tabId: port.sender.tab.id,
+		notify: notify,
+	};
+}
 
-	function notifyAction() {
-		for (let port of ports) {
-			if (port.sender.tab.id == activeTabId) {
-				port.postMessage({ command: "pageAction" });
-				return;
-			}
-		}
-	}
+function OptionsPort(port, optionChangedListener) {
+	port.onMessage.addListener(messageReceived);
+	port.onDisconnect.addListener(portDisconnected);
 
-	function actionClick(tab, clickData) {
-		/* handle middle click */
-		if (clickData.button == 1) {
-			browser.runtime.openOptionsPage();
+	function messageReceived(message) {
+		if (!message.hasOwnProperty('command')) {
+			console.warn("Unknown options message:", message);
 			return;
 		}
 
-		const hostname = new URL(tab.url).hostname;
+		const args = message.hasOwnProperty('args') ? message.args : [ ];
 
-		if (contentScriptInjected(tab.id)) {
-			notifyAction();
-			return;
+		switch (message.command) {
+			case "getConfigOptions":
+				port.postMessage({ options: Config.options, });
+				break;
+
+			case "optionChanged":
+				onOptionChanged(...args);
+				break;
+
+			default:
+				console.warn("Unknown options command:", message.command);
 		}
+	}
 
-		if (Config.getSiteConfig(hostname).isSupported) {
-			if (Config.options.activateAutomatically) {
-				browser.permissions.request({ origins: [ `*://${ hostname }/*` ] })
-				.then(granted => {
-					if (granted) {
-						registerContentScript(`*://${ hostname }/*`);
-					}
-				});
-			}
+	function onOptionChanged(option, value) {
+		if (optionChangedListener instanceof Function) {
+			optionChangedListener(option, value);
 		}
-		else {
-			browser.pageAction.hide(tab.id);
-		}
-
-		browser.tabs.executeScript(tab.id, { file: "/js/content.js" });
 	}
 
-	function contentScriptInjected(tabId) {
-		activeTabId = tabId;
-		return activeTabs[tabId] != null;
+	function portDisconnected() {
+		port = null;
+		optionChangedListener = null;
 	}
-
-	function setContentScriptLoaded(tabId) {
-		activeTabs[tabId] = ((...args) => notifySeenUrl(...args));
-		History.addListener(activeTabs[tabId]);
-	}
-
-	function setContentScriptUnloaded(tabId) {
-		History.removeListener(activeTabs[tabId]);
-		delete activeTabs[tabId];
-	}
-})();
+}

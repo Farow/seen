@@ -28,7 +28,7 @@ const Config = (() => {
 		markSeenOn: "click",
 		markSeenOnFocus: false,
 		markAllSeenOnUnload: false,
-		globalStyle: ".seen {\n\topacity: .5;\n}\n\n.hidden { display: none; }\n\n.new {\n\tbox-shadow: -2px 0px 0px 0px hsl(210, 100%, 75%);\n\ttransition: opacity 2s cubic-bezier(.07, .95, 0, 1);\n}\n\n.new.seen {\n\tbox-shadow: none;\n\ttransition: opacity 2s cubic-bezier(.07, .95, 0, 1);\n}",
+		globalStyle: ".new {\n\tbox-shadow: -2px 0px 0px 0px hsl(210, 100%, 75%);\n\ttransition:\n\t\topacity 2s cubic-bezier(.07, .95, 0, 1),\n\t\tbox-shadow 2s cubic-bezier(.07, .95, 0, 1);\n}\n\n.seen {\n\topacity: .5;\n\tbox-shadow: none;\n\ttransition:\n\t\topacity 2s cubic-bezier(.07, .95, 0, 1),\n\t\tbox-shadow 2s cubic-bezier(.07, .95, 0, 1);\n}\n\n.new.error {\n\tbox-shadow: -2px 0px 0px 0px hsl(0, 100%, 75%);\n}\n\n.hidden { display: none; }",
 	};
 
 	let readyPromise;
