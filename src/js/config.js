@@ -23,6 +23,7 @@ const Config = (() => {
 
 	const defaultOptions = {
 		activateAutomatically: true,
+		hideSeenLinksAutomatically: false,
 		historyProvider: "indexedDB",
 		trackSeparately: false,
 		markSeenOn: "click",

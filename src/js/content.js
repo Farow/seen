@@ -181,6 +181,7 @@ const BackgroundPort = (() => {
 
 		switch (option) {
 			case "activateAutomatically":
+			case "hideSeenLinksAutomatically":
 				break;
 
 			case "globalStyle":
@@ -276,7 +277,12 @@ const BackgroundPort = (() => {
 			.then(result => {
 				visited = result;
 				if (visited) {
-					addClass("seen");
+					if (site.hideSeenLinksAutomatically) {
+						addClass("seen", "hidden");
+					}
+					else {
+						addClass("seen");
+					}
 				}
 				else {
 					addClass("new");
@@ -334,12 +340,12 @@ const BackgroundPort = (() => {
 		}
 
 		/* private methods */
-		function addClass(className) {
+		function addClass(...classNames) {
 			const parents = findParents(element);
 
 			requestAnimationFrame(() => {
 				for (const parent of parents) {
-					parent.classList.add(className);
+					parent.classList.add(...classNames);
 				}
 			});
 		}

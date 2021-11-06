@@ -18,6 +18,7 @@
 
 const elements = {
 	activateAutomaticallyInput: document.getElementById("activateAutomatically"),
+	hideSeenLinksAutomaticallyInput: document.getElementById("hideSeenLinksAutomatically"),
 	useBrowserHistoryInput: document.getElementById("useBrowserHistory"),
 	useExtensionHistoryInput: document.getElementById("useExtensionHistory"),
 	trackSeparatelyInput: document.getElementById("trackSeparately"),
@@ -77,6 +78,10 @@ const BackgroundPort = (() => {
 			elements.activateAutomaticallyInput.checked = false;
 		}
 
+		if (options.hideSeenLinksAutomatically) {
+			elements.hideSeenLinksAutomaticallyInput.checked = true;
+		}
+
 		if (options.historyProvider == "browser") {
 			elements.useBrowserHistoryInput.checked = true;
 		}
@@ -108,6 +113,7 @@ const BackgroundPort = (() => {
 	function addListeners() {
 		elements.useBrowserHistoryInput.addEventListener("click", requestHistoryPermission);
 		elements.activateAutomaticallyInput.addEventListener("change", optionChanged);
+		elements.hideSeenLinksAutomaticallyInput.addEventListener("change", optionChanged);
 		elements.useBrowserHistoryInput.addEventListener("change", optionChanged);
 		elements.useExtensionHistoryInput.addEventListener("change", optionChanged);
 		elements.trackSeparatelyInput.addEventListener("change", optionChanged);
