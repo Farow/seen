@@ -123,7 +123,7 @@ const BackgroundPort = (() => {
 		const observer = new PageObserver(site.links, linkAdded);
 		addStyle();
 
-		BackgroundPort.addListener(onMessage);
+		BackgroundPort.addListener(onCommand);
 		updateUnloadListener();
 	}
 
@@ -133,8 +133,20 @@ const BackgroundPort = (() => {
 		links.push(link);
 	}
 
-	function onMessage(command, ...args) {
+	function onCommand(command, ...args) {
 		switch (command) {
+			case "clearHistory":
+				onClearHistory(...args);
+				break;
+
+			case "markAllNew":
+				onMarkAllNew(...args);
+				break;
+
+			case "markAllSeen":
+				onMarkAllSeen(...args);
+				break;
+
 			case "optionChanged":
 				onOptionChanged(...args);
 				break;
@@ -147,9 +159,25 @@ const BackgroundPort = (() => {
 				onSeenUrl(...args);
 				break;
 
+			case "toggleVisibility":
+				onToggleVisibility(...args);
+				break;
+
 			default:
 				console.warn("Unhandled command: ", command);
 		}
+	}
+
+	function onClearHistory() {
+		links.filter(l => !l.isNew).map(l => l.markNew());
+	}
+
+	function onMarkAllNew() {
+		links.filter(l => !l.isNew).map(l => l.setNew());
+	}
+
+	function onMarkAllSeen() {
+		links.filter(l => l.isNew).map(l => l.setSeen());
 	}
 
 	function onOptionChanged(option, value) {
@@ -179,11 +207,7 @@ const BackgroundPort = (() => {
 	}
 
 	function onPageAction() {
-		const anyLinksHidden = links.map(l => l.hideIfSeen()).some(hidden => hidden);
-
-		if (!anyLinksHidden) {
-			links.map(l => l.show());
-		}
+		onToggleVisibility();
 	}
 
 	/* Mark seen urls from other tabs. */
@@ -193,6 +217,14 @@ const BackgroundPort = (() => {
 		}
 
 		links.filter(l => l.element.href == url).map(l => l.markSeen());
+	}
+
+	function onToggleVisibility() {
+		const anyLinksHidden = links.map(l => l.hideIfSeen()).some(hidden => hidden);
+
+		if (!anyLinksHidden) {
+			links.map(l => l.show());
+		}
 	}
 
 	function updateGlobalStyle(newStyle) {
@@ -271,10 +303,30 @@ const BackgroundPort = (() => {
 			return false;
 		}
 
+		function markNew() {
+			visited = false;
+			addClass("new");
+			removeClass("seen");
+			updateListener();
+		}
+
 		function markSeen() {
 			visited = true;
 			removeEventListener();
 			addClass("seen");
+		}
+
+		function setNew() {
+			BackgroundPort.postMessage({ command: "setNew", args: [ element.href, site.hostname ] })
+			.then(result => markNew())
+			.catch(error => { addClass("error"); console.error("setNew error: ", error); });
+		}
+
+		function setSeen(event) {
+			removeEventListener();
+			BackgroundPort.postMessage({ command: "setSeen", args: [ element.href, site.hostname ] })
+			.then(result => markSeen())
+			.catch(error => { addClass("error"); console.error("setSeen error: ", error); });
 		}
 
 		function show() {
@@ -337,19 +389,15 @@ const BackgroundPort = (() => {
 			listeners.length = 0;
 		}
 
-		function setSeen(event) {
-			removeEventListener();
-			BackgroundPort.postMessage({ command: "setSeen", args: [ element.href, site.hostname ] })
-			.then(result => markSeen())
-			.catch(error => { addClass("error"); console.error("setSeen error: ", error); });
-		}
-
 		return {
 			get element() { return element; },
-			get isNew() { return listeners.size != 0; },
+			get isNew() { return listeners.length != 0; },
 			checkSeen: checkSeen,
 			hideIfSeen: hideIfSeen,
+			markNew: markNew,
 			markSeen: markSeen,
+			setNew: setNew,
+			setSeen: setSeen,
 			show: show,
 			updateListener: updateListener,
 		};

@@ -76,6 +76,14 @@ const Config = (() => {
 		return History.checkSeen(url, hostname, options.trackSeparately);
 	}
 
+	function clearHistory() {
+		return History.clearHistory();
+	}
+
+	function setNew(url, hostname) {
+		return History.setNew(url, hostname);
+	}
+
 	function setSeen(url, hostname) {
 		return History.setSeen(url, hostname);
 	}
@@ -141,6 +149,8 @@ const Config = (() => {
 		ready: ready,
 		getSiteConfig: getSiteConfig,
 		checkSeen: checkSeen,
+		clearHistory: clearHistory,
+		setNew: setNew,
 		setSeen: setSeen,
 	};
 })();

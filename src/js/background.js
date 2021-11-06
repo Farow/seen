@@ -76,6 +76,37 @@ function init(result) {
 		registerContentScript(origin);
 	}
 
+	browser.menus.create({
+		id: "toggleVisibility",
+		contexts: ["page_action"],
+		title: "Toogle visibility",
+	});
+
+	browser.menus.create({
+		id: "markAllSeen",
+		contexts: ["page_action"],
+		title: "Mark all as seen",
+	});
+
+	browser.menus.create({
+		id: "markAllNew",
+		contexts: ["page_action"],
+		title: "Mark all as new",
+	});
+
+	browser.menus.create({
+		id: "clearHistory",
+		contexts: ["page_action"],
+		title: "Clear history",
+	});
+
+	browser.menus.create({
+		id: "openOptionsPage",
+		contexts: ["page_action"],
+		title: "Open options page",
+	});
+
+	browser.menus.onClicked.addListener(onMenuClick);
 	browser.runtime.onConnect.addListener(portConnected);
 	browser.pageAction.onClicked.addListener(actionClick);
 }
@@ -92,6 +123,33 @@ function registerContentScript(origin) {
 		runAt: "document_start"
 	})
 	.catch(error => console.warn("Could not register content script: ", origin, error));
+}
+
+function onMenuClick(info, tab) {
+	switch (info.menuItemId) {
+		case "clearHistory":
+			onClearHistory();
+			break;
+
+		case "markAllNew":
+		case "markAllSeen":
+		case "toggleVisibility":
+			ContentScriptPorts.notifyTab(tab.id, { command: info.menuItemId });
+			break;
+
+		case "openOptionsPage":
+			openOptionsPage();
+			break;
+
+		default:
+			console.warn("Unhandled menu item click:", info);
+	}
+}
+
+function onClearHistory() {
+	Config.clearHistory()
+	.then(result => ContentScriptPorts.notifyAll({ command: "clearHistory" }))
+	.catch(error => console.error("Error while clearing history:", error));
 }
 
 function portConnected(port) {
@@ -121,7 +179,7 @@ function onOptionChanged(option, value) {
 function actionClick(tab, clickData) {
 	/* handle middle click */
 	if (clickData.button == 1) {
-		browser.runtime.openOptionsPage();
+		openOptionsPage();
 		return;
 	}
 
@@ -147,6 +205,10 @@ function actionClick(tab, clickData) {
 	}
 
 	browser.tabs.executeScript(tab.id, { file: "/js/content.js" });
+}
+
+function openOptionsPage() {
+	browser.runtime.openOptionsPage();
 }
 
 function ContentScriptPort(port) {
@@ -201,6 +263,9 @@ function ContentScriptPort(port) {
 			case "checkSeen":
 				return onCheckSeen(...args);
 
+			case "setNew":
+				return onSetNew(...args);
+
 			case "setSeen":
 				return onSetSeen(...args);
 
@@ -219,6 +284,10 @@ function ContentScriptPort(port) {
 
 	function onCheckSeen(url) {
 		return Config.checkSeen(url, hostname);
+	}
+
+	function onSetNew(url) {
+		return Config.setNew(url, hostname);
 	}
 
 	function onSetSeen(url) {

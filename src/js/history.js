@@ -93,6 +93,28 @@ const History = (() => {
 		return provider.checkSeen(url, hostname, hostnameSpecific);
 	}
 
+	function clearHistory() {
+		if (provider == null) {
+			throw new Error("No provider set.");
+		}
+
+		if (provider.clearHistory instanceof Function) {
+			return provider.clearHistory();
+		}
+	}
+
+	function setNew(url, hostname) {
+		if (provider == null) {
+			throw new Error("No provider set.");
+		}
+
+		if (provider.setNew instanceof Function) {
+			return provider
+				.setNew(url, hostname)
+				.then((result) => { raiseEvent(url, hostname); return result });
+		}
+	}
+
 	function setSeen (url, hostname) {
 		if (provider == null) {
 			throw new Error("No provider set.");
@@ -114,7 +136,9 @@ const History = (() => {
 		addListener: addListener,
 		removeListener: removeListener,
 		checkSeen: checkSeen,
-		setSeen: setSeen
+		clearHistory: clearHistory,
+		setNew: setNew,
+		setSeen: setSeen,
 	};
 })();
 
@@ -167,6 +191,36 @@ History.addProvider("indexedDB", (function () {
 		return new Promise((resolve, reject) => {
 			const simpleTransaction = new SimpleTransaction();
 			simpleTransaction.getKey(url, hostname, hostnameSpecific).then(getRecondAndUpdateTimestamp).then(resolve, reject);
+		});
+	}
+
+	function clearHistory() {
+		if (db == null) {
+			throw new Error("Database not ready. Wait for the ready() promise to resolve first.");
+		}
+
+		return new Promise((resolve, reject) => {
+			const simpleTransaction = new SimpleTransaction();
+			const objectStore = simpleTransaction.transaction.objectStore("seen");
+			const request = objectStore.clear();
+
+			request.addEventListener("success", (event) => resolve(event.target.result));
+
+			request.addEventListener("error", (event) => {
+				console.error("Error adding record: ", record, event.target.error);
+				reject(event.target.error);
+			});
+		});
+	}
+
+	function setNew(url, hostname) {
+		if (db == null) {
+			throw new Error("Database not ready. Wait for the ready() promise to resolve first.");
+		}
+
+		return new Promise((resolve, reject) => {
+			const transaction = new SimpleTransaction();
+			transaction.getKey(url, hostname, true).then(removeRecord).then(resolve, reject);
 		});
 	}
 
@@ -249,6 +303,23 @@ History.addProvider("indexedDB", (function () {
 		});
 	}
 
+	function removeRecord(getKeyResult) {
+		return new Promise((resolve, reject) => {
+			const transaction = getKeyResult.event.target.transaction;
+			const key = getKeyResult.event.target.result;
+
+			const objectStore = transaction.objectStore("seen");
+			const request = objectStore.delete(key);
+
+			request.addEventListener("success", (event) => resolve(event.target.result));
+
+			request.addEventListener("error", (event) => {
+				console.error("Error removing record: ", record, event.target.error);
+				reject(event.target.error);
+			});
+		});
+	}
+
 	class SimpleTransaction {
 		constructor(oncomplete, onerror, readOnly) {
 			this.transaction = db.transaction(["seen"], readOnly ? "readonly" : "readwrite");
@@ -284,6 +355,8 @@ History.addProvider("indexedDB", (function () {
 		init: init,
 		ready: ready,
 		checkSeen: checkSeen,
+		clearHistory: clearHistory,
+		setNew: setNew,
 		setSeen: setSeen,
 	};
 })());
