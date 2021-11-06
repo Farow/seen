@@ -29,6 +29,8 @@ const Config = (() => {
 		markSeenOnFocus: false,
 		markAllSeenOnUnload: false,
 		globalStyle: ".new {\n\tbox-shadow: -2px 0px 0px 0px hsl(210, 100%, 75%);\n\ttransition:\n\t\topacity 2s cubic-bezier(.07, .95, 0, 1),\n\t\tbox-shadow 2s cubic-bezier(.07, .95, 0, 1);\n}\n\n.seen {\n\topacity: .5;\n\tbox-shadow: none;\n\ttransition:\n\t\topacity 2s cubic-bezier(.07, .95, 0, 1),\n\t\tbox-shadow 2s cubic-bezier(.07, .95, 0, 1);\n}\n\n.new.error {\n\tbox-shadow: -2px 0px 0px 0px hsl(0, 100%, 75%);\n}\n\n.hidden { display: none; }",
+		pageActionCommand: "toggleVisibility",
+		pageActionMiddleClickCommand: "openOptionsPage",
 	};
 
 	let readyPromise;

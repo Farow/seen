@@ -106,6 +106,7 @@ function init(result) {
 		title: "Open options page",
 	});
 
+	browser.menus.onShown.addListener(onMenuShown);
 	browser.menus.onClicked.addListener(onMenuClick);
 	browser.runtime.onConnect.addListener(portConnected);
 	browser.pageAction.onClicked.addListener(actionClick);
@@ -123,6 +124,17 @@ function registerContentScript(origin) {
 		runAt: "document_start"
 	})
 	.catch(error => console.warn("Could not register content script: ", origin, error));
+}
+
+function onMenuShown(info, tab) {
+	const contentScriptLoaded = ContentScriptPorts.containsTab(tab.id);
+	const contentScriptMenuItems = ["toggleVisibility", "markAllSeen", "markAllNew"];
+
+	for (const menuId of contentScriptMenuItems) {
+		browser.menus.update(menuId, { enabled: contentScriptLoaded });
+	}
+
+	browser.menus.refresh();
 }
 
 function onMenuClick(info, tab) {
@@ -177,18 +189,35 @@ function onOptionChanged(option, value) {
 }
 
 function actionClick(tab, clickData) {
+	const actionCommand = clickData == null || clickData.button == 0
+		? Config.options.pageActionCommand
+		: Config.options.pageActionMiddleClickCommand;
+
+
 	/* handle middle click */
-	if (clickData.button == 1) {
-		openOptionsPage();
+	if (clickData != null && clickData.button == 1) {
+		const canExecuteCommand = ContentScriptPorts.containsTab(tab.id) || ["clearHistory", "openOptionsPage"].indexOf(actionCommand) > -1;
+
+		if (canExecuteCommand) {
+			onMenuClick({ menuItemId: actionCommand }, tab);
+		}
+		else {
+			console.warn("Cannot perform pageActionMiddleClickCommand:", actionCommand);
+		}
+
 		return;
 	}
-
-	const hostname = new URL(tab.url).hostname;
 
 	if (ContentScriptPorts.containsTab(tab.id)) {
-		ContentScriptPorts.notifyTab(tab.id, { command: "pageAction" });
+		onMenuClick({ menuItemId: actionCommand }, tab);
 		return;
 	}
+
+	executeContentScript(tab);
+}
+
+function executeContentScript(tab) {
+	const hostname = new URL(tab.url).hostname;
 
 	if (Config.getSiteConfig(hostname).isSupported) {
 		if (Config.options.activateAutomatically) {
@@ -327,7 +356,16 @@ function OptionsPort(port, optionChangedListener) {
 
 		switch (message.command) {
 			case "getConfigOptions":
-				port.postMessage({ options: Config.options, });
+				port.postMessage({
+					options: Config.options,
+					availableCommands: [
+						{ id: "clearHistory", caption: "Clear history" },
+						{ id: "markAllNew", caption: "Mark all as new" },
+						{ id: "markAllSeen", caption: "Mark all as seen" },
+						{ id: "openOptionsPage", caption: "Open options page" },
+						{ id: "toggleVisibility", caption: "Toogle visibility" },
+					],
+				});
 				break;
 
 			case "optionChanged":

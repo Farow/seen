@@ -151,10 +151,6 @@ const BackgroundPort = (() => {
 				onOptionChanged(...args);
 				break;
 
-			case "pageAction":
-				onPageAction(...args);
-				break;
-
 			case "seenUrl":
 				onSeenUrl(...args);
 				break;
@@ -204,10 +200,6 @@ const BackgroundPort = (() => {
 			default:
 				console.warn("Unhandled option change:", option);
 		}
-	}
-
-	function onPageAction() {
-		onToggleVisibility();
 	}
 
 	/* Mark seen urls from other tabs. */

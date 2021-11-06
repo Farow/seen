@@ -26,6 +26,8 @@ const elements = {
 	markSeenOnFocusInput: document.getElementById("markSeenOnFocus"),
 	markAllSeenOnUnloadInput: document.getElementById("markAllSeenOnUnload"),
 	globalStyleInput: document.getElementById("globalStyle"),
+	pageActionCommandInput: document.getElementById("pageActionCommand"),
+	pageActionMiddleClickCommandInput: document.getElementById("pageActionMiddleClickCommand"),
 };
 
 const BackgroundPort = (() => {
@@ -38,7 +40,7 @@ const BackgroundPort = (() => {
 
 	function messageReceived(message) {
 		if (message.hasOwnProperty('options')) {
-			pendingPromises.map(resolve => resolve(message.options));
+			pendingPromises.map(resolve => resolve(message));
 			pendingPromises.length = 0;
 			return;
 		}
@@ -66,36 +68,41 @@ const BackgroundPort = (() => {
 })();
 
 (async () => {
-	const config = await BackgroundPort.getConfigOptions();
+	const { options, availableCommands } = await BackgroundPort.getConfigOptions();
 	restoreOptions();
 	addListeners();
 
 	function restoreOptions() {
-		if (!config.activateAutomatically) {
+		if (!options.activateAutomatically) {
 			elements.activateAutomaticallyInput.checked = false;
 		}
 
-		if (config.historyProvider == "browser") {
+		if (options.historyProvider == "browser") {
 			elements.useBrowserHistoryInput.checked = true;
 		}
 
-		if (config.trackSeparately) {
+		if (options.trackSeparately) {
 			elements.trackSeparatelyInput.checked = true;
 		}
 
-		if (config.markSeenOn == "hover") {
+		if (options.markSeenOn == "hover") {
 			elements.markSeenOnHoverInput.checked = true;
 		}
 
-		if (config.markSeenOnFocus) {
+		if (options.markSeenOnFocus) {
 			elements.markSeenOnFocusInput.checked = true;
 		}
 
-		if (config.markAllSeenOnUnload) {
+		if (options.markAllSeenOnUnload) {
 			elements.markAllSeenOnUnloadInput.checked = true;
 		}
 
-		elements.globalStyleInput.value = config.globalStyle;
+		for (let command of availableCommands) {
+			elements.pageActionCommandInput.appendChild(new OptionElement(command.id, command.caption, options.pageActionCommand == command.id));
+			elements.pageActionMiddleClickCommandInput.appendChild(new OptionElement(command.id, command.caption, options.pageActionMiddleClickCommand == command.id));
+		}
+
+		elements.globalStyleInput.value = options.globalStyle;
 	}
 
 	function addListeners() {
@@ -109,6 +116,8 @@ const BackgroundPort = (() => {
 		elements.markSeenOnFocusInput.addEventListener("change", optionChanged);
 		elements.markAllSeenOnUnloadInput.addEventListener("change", optionChanged);
 		elements.globalStyleInput.addEventListener("change", optionChanged);
+		elements.pageActionCommandInput.addEventListener("change", optionChanged);
+		elements.pageActionMiddleClickCommandInput.addEventListener("change", optionChanged);
 	}
 
 	function requestHistoryPermission(event) {
@@ -160,3 +169,15 @@ const BackgroundPort = (() => {
 		BackgroundPort.notifyOptionChanged(option, value);
 	}
 })();
+
+function OptionElement(id, caption, selected) {
+	const option = document.createElement("option");
+	option.value = id;
+	option.appendChild(document.createTextNode(caption));
+
+	if (selected) {
+		option.selected = true;
+	}
+
+	return option;
+}
