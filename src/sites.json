@@ -1,15 +1,16 @@
 {
 	"lobste.rs": {
 		"links": ".u-url",
-		"parents": "return [ link.closest('.story') ]"
+		"parent": ".story"
 	},
 	"news.ycombinator.com": {
 		"links": ".itemlist .titlelink",
-		"parents": "return [\n\tlink.parentElement.parentElement,\n\tlink.parentElement.parentElement.nextElementSibling,\n\tlink.parentElement.parentElement.nextElementSibling.nextElementSibling\n];"
+		"parent": ".athing",
+		"parentSiblings": 2
 	},
 	"reddit.com": {
 		"links": ".thing.link[data-context=\"listing\"]:not(.promoted) > .entry a.title, .Post a[data-click-id=\"body\"]",
-		"parents": "return [ link.closest('.thing') || link.closest('.Post') ];",
+		"parent": ".thing, .Post",
 		"style": ".seen, .dupe { overflow: hidden; } .new.message { box-shadow: none; }"
 	}
 }

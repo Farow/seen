@@ -100,15 +100,13 @@ const BackgroundPort = (() => {
 	BackgroundPort.connect();
 
 	const site = await BackgroundPort.postMessage({ command: 'getSiteConfig' });
-	const links = [ ];
-
 	if (!site.isSupported) {
 		BackgroundPort.disconnect();
 		alert("This site is not supported.");
 		return;
 	}
 
-	const findParents = new Function('link', site.parents);
+	const links = [ ];
 
 	init();
 
@@ -341,7 +339,7 @@ const BackgroundPort = (() => {
 
 		/* private methods */
 		function addClass(...classNames) {
-			const parents = findParents(element);
+			const parents = findParents();
 
 			requestAnimationFrame(() => {
 				for (const parent of parents) {
@@ -366,11 +364,36 @@ const BackgroundPort = (() => {
 		}
 
 		function containsClass(className) {
-			return findParents(element).some(p => p.classList.contains(className));
+			return findParents().some(p => p.classList.contains(className));
+		}
+
+		function findParents() {
+			const parents = [ element.closest(site.parent) ];
+
+			if (site.hasOwnProperty("parentSiblings")) {
+				if (!Number.isInteger(site.parentSiblings) || site.parentSiblings < 1) {
+					console.warn("parentSiblings has an invalid value:", site.parentSiblings);
+					return parents;
+				}
+
+				let i = site.parentSiblings;
+				let currentElement = parents[0];
+
+				while (i-- && currentElement.nextElementSibling) {
+					currentElement = currentElement.nextElementSibling;
+					parents.push(currentElement);
+				}
+
+				if (i > 0) {
+					console.warn(`Unable to find ${ i } sibling(s) for link:`, element, parents[0]);
+				}
+			}
+
+			return parents;
 		}
 
 		function removeClass(className) {
-			const parents = findParents(element);
+			const parents = findParents();
 
 			requestAnimationFrame(() => {
 				for (const parent of parents) {
