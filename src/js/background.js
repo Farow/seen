@@ -357,7 +357,8 @@ function OptionsPort(port, optionChangedListener) {
 		switch (message.command) {
 			case "getConfigOptions":
 				port.postMessage({
-					options: Config.options,
+					// A proxy object cannot be directly cloned.
+					options: Object.assign({}, Config.options),
 					availableCommands: [
 						{ id: "clearHistory", caption: "Clear history" },
 						{ id: "markAllNew", caption: "Mark all as new" },

@@ -146,7 +146,14 @@ const Config = (() => {
 	return {
 		/* Fields */
 		sites: sites,
-		options: options,
+		options: new Proxy(options, {
+			set: (target, property, value) => {
+				target[property] = value;
+				browser.storage.sync.set({ [property]: value })
+				.catch(error => console.error("Could not save option: ", property, value));
+				return true;
+			},
+		}),
 
 		/* Methods */
 		ready: ready,

@@ -164,14 +164,6 @@ const BackgroundPort = (() => {
 			value = event.target.value;
 		}
 
-		saveOption(option, value);
-	}
-
-	function saveOption(option, value) {
-		let saveObject = { };
-		saveObject[option] = value;
-		browser.storage.sync.set(saveObject)
-		.catch(error => console.warn("Could set browser.storage.sync: ", saveObject, error));
 		BackgroundPort.notifyOptionChanged(option, value);
 	}
 })();
