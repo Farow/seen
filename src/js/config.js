@@ -19,9 +19,7 @@
 const Config = (() => {
 	/* Use Object.assign for these, since we return them. */
 	const sites = { };
-	const options = { };
-
-	const defaultOptions = {
+	const options = {
 		activateAutomatically: true,
 		hideSeenLinksAutomatically: false,
 		historyProvider: "indexedDB",
@@ -44,12 +42,9 @@ const Config = (() => {
 		let readyResolve, readyReject;
 		readyPromise = new Promise((resolve, reject) => [ readyResolve, readyReject ] = [ resolve, reject ]);
 
-		const readyPromises = [
-			loadSites(),
-			loadOptions().then(() => History.setProvider(options.historyProvider)),
-		];
-
-		Promise.all(readyPromises).then(() => readyResolve(), readyReject);
+		loadConfig()
+		.then(() => History.setProvider(options.historyProvider))
+		.then(() => readyResolve(), readyReject);
 
 		return readyPromise;
 	}
@@ -95,29 +90,31 @@ const Config = (() => {
 		Private methods
 	*/
 
-	function loadSites() {
-		return (
-			fetch(browser.runtime.getURL("sites.json"))
-			.then(response => response.json())
-			.then(result => Object.assign(sites, result))
-			.catch(error => { throw new Error(`loadSites error: ${ error }`); })
-		);
-	}
+	async function loadConfig() {
+		const sitesPromise = fetch(browser.runtime.getURL("sites.json"))
+		.then(response => response.json())
+		.catch(error => { console.error("Could not load sites.json: ", error); return { }; });
 
-	/*
-		Use the default options on error.
-		Note: storage.sync can retain data even if the extension is uninstalled while sync is disabled.
-	*/
-	function loadOptions() {
-		return (
-			browser.storage.sync.get()
-			.then(storedOptions => { return { ...defaultOptions, ...storedOptions }; })
-			.catch(error => {
-				console.error("Could not load options: ", error);
-				return defaultOptions;
-			})
-			.then(result => Object.assign(options, result))
-		);
+		/* Note: storage.sync can retain data even if the extension is uninstalled while sync is disabled. */
+		const configPromise = browser.storage.sync.get()
+		.catch(error => { console.error("Could not load config: ", error); return { } });
+
+		await Promise.all([sitesPromise, configPromise])
+		.then(result => {
+			const [sitesResult, storedConfig] = result;
+
+			if (Object.keys(sitesResult).length > 0) {
+				Object.assign(sites, sitesResult);
+			}
+
+			if (storedConfig.hasOwnProperty("sites")) {
+				Object.assign(sites, storedConfig.sites);
+			}
+
+			if (storedConfig.hasOwnProperty("options")) {
+				Object.assign(options, storedConfig.options);
+			}
+		});
 	}
 
 	function tokensMatch(siteTokens, hostnameTokens) {
@@ -149,7 +146,10 @@ const Config = (() => {
 		options: new Proxy(options, {
 			set: (target, property, value) => {
 				target[property] = value;
-				browser.storage.sync.set({ [property]: value })
+
+				/* Set overwrites previous values, get the current options before storing. */
+				browser.storage.sync.get("options")
+				.then(result => browser.storage.sync.set({ options: { ...result.options, [property]: value } }))
 				.catch(error => console.error("Could not save option: ", property, value));
 				return true;
 			},
