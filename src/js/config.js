@@ -135,7 +135,18 @@ const Config = (() => {
 
 	return {
 		/* Fields */
-		sites: sites,
+		sites: new Proxy(sites, {
+			deleteProperty: (target, property) => {
+				const result = delete target[property];
+				browser.storage.sync.set({ sites: target });
+				return result;
+			},
+			set: (target, property, value) => {
+				target[property] = value;
+				browser.storage.sync.set({ sites: target });
+				return true;
+			},
+		}),
 		options: new Proxy(options, {
 			set: (target, property, value) => {
 				target[property] = value;

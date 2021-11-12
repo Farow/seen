@@ -69,6 +69,8 @@ Promise.all([
 ])
 .then(init);
 
+const registeredScripts = { };
+
 function init(result) {
 	const grantedPermissions = result[0];
 
@@ -123,6 +125,7 @@ function registerContentScript(origin) {
 		js: [{ file: "/js/content.js" }],
 		runAt: "document_start"
 	})
+	.then(result => registeredScripts[origin] = result)
 	.catch(error => console.warn("Could not register content script: ", origin, error));
 }
 
@@ -367,11 +370,24 @@ function OptionsPort(port, optionChangedListener) {
 
 					// A proxy object cannot be directly cloned.
 					options: Object.assign({}, Config.options),
+					sites: Object.assign({}, Config.sites),
 				});
 				break;
 
 			case "optionChanged":
 				onOptionChanged(...args);
+				break;
+
+			case "siteHostnameChanged":
+				onSiteHostnameChanged(...args);
+				break;
+
+			case "siteKeyChanged":
+				onSiteKeyChanged(...args);
+				break;
+
+			case "siteRemoved":
+				onSiteRemoved(...args);
 				break;
 
 			default:
@@ -382,6 +398,32 @@ function OptionsPort(port, optionChangedListener) {
 	function onOptionChanged(option, value) {
 		if (optionChangedListener instanceof Function) {
 			optionChangedListener(option, value);
+		}
+	}
+
+	function onSiteHostnameChanged(oldHostname, newHostname) {
+		const site = Config.sites[oldHostname];
+		delete Config.sites[oldHostname];
+		Config.sites[newHostname] = site;
+	}
+
+	function onSiteKeyChanged(hostname, key, value) {
+		/* Proxy changes do not trigger on child keys. */
+		const site = Config.sites[hostname] ?? { };
+		site[key] = value;
+		Config.sites[hostname] = site;
+	}
+
+	function onSiteRemoved(hostname) {
+		const origin = `*://${ hostname }/*`;
+
+		delete Config.sites[hostname];
+
+		if (registeredScripts.hasOwnProperty(origin)) {
+			/* Removing an origin does not seem to affect registered scripts. */
+			browser.permissions.remove({ origins: [ origin ] });
+			registeredScripts[origin].unregister();
+			delete registeredScripts[origin];
 		}
 	}
 

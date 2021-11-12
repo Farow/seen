@@ -74,7 +74,9 @@ const BackgroundPort = (() => {
 })();
 
 (async () => {
-	const { options, availableCommands } = await BackgroundPort.getConfig();
+	const { availableCommands, options, sites } = await BackgroundPort.getConfig();
+	elements.sitesInput = new SitesInput(sites);
+
 	restoreOptions();
 	addListeners();
 
@@ -113,6 +115,7 @@ const BackgroundPort = (() => {
 		}
 
 		elements.globalStyleInput.value = options.globalStyle;
+		document.body.appendChild(elements.sitesInput.element);
 	}
 
 	function addListeners() {
@@ -129,6 +132,21 @@ const BackgroundPort = (() => {
 		elements.globalStyleInput.addEventListener("change", optionChanged);
 		elements.pageActionCommandInput.addEventListener("change", optionChanged);
 		elements.pageActionMiddleClickCommandInput.addEventListener("change", optionChanged);
+		elements.sitesInput.onSiteHostnameChanged = onSiteHostnameChanged;
+		elements.sitesInput.onSiteKeyChanged = onSiteKeyChanged;
+		elements.sitesInput.onSiteRemoved = onSiteRemoved;
+	}
+
+	function onSiteHostnameChanged(oldHostname, newHostname) {
+		BackgroundPort.notify({ command: "siteHostnameChanged", args: [ oldHostname, newHostname ] });
+	}
+
+	function onSiteKeyChanged(hostname, key, value) {
+		BackgroundPort.notify({ command: "siteKeyChanged", args: [ hostname, key, value ] });
+	}
+
+	function onSiteRemoved(hostname) {
+		BackgroundPort.notify({ command: "siteRemoved", args: [ hostname ] });
 	}
 
 	function requestHistoryPermission(event) {
@@ -183,4 +201,317 @@ function OptionElement(id, caption, selected) {
 	}
 
 	return option;
+}
+
+function SitesInput(sites) {
+	const details = document.createElement("details");
+	const summary = document.createElement("summary");
+
+	summary.appendChild(document.createTextNode("Sites"));
+	details.appendChild(summary);
+
+	const addSiteButton = document.createElement("button");
+	addSiteButton.appendChild(document.createTextNode("Add new site"));
+	addSiteButton.classList.add("browser-style", "add-button");
+	addSiteButton.addEventListener("click", addSiteButton_onClick);
+	details.appendChild(addSiteButton);
+
+	for (const hostname of Object.keys(sites).sort()) {
+		const siteDetails = new SiteDetails(hostname, sites[hostname]);
+		siteDetails.onSiteHostnameChanged = site_onSiteHostnameChanged;
+		siteDetails.onSiteKeyChanged = site_onSiteKeyChanged;
+		siteDetails.onSiteRemoved = site_onSiteRemoved;
+		details.appendChild(siteDetails.element);
+	}
+
+	let onSiteHostnameChanged, onSiteKeyChanged, onSiteRemoved;
+
+	function addSiteButton_onClick(event) {
+		const exampleHostname = generateNextExampleHostname();
+		const newSite = { links: "" };
+		sites[exampleHostname] = newSite;
+
+		const siteDetails = new SiteDetails(exampleHostname, newSite);
+		siteDetails.onSiteHostnameChanged = site_onSiteHostnameChanged;
+		siteDetails.onSiteKeyChanged = site_onSiteKeyChanged;
+		siteDetails.onSiteRemoved = site_onSiteRemoved;
+		addSiteButton.insertAdjacentElement("afterend", siteDetails.element);
+
+		site_onSiteKeyChanged(exampleHostname, "links", "");
+	}
+
+	function site_onSiteHostnameChanged(oldHostname, newHostname) {
+		if (onSiteHostnameChanged instanceof Function) {
+			const site = sites[oldHostname];
+			delete sites[oldHostname];
+			sites[newHostname] = site;
+			onSiteHostnameChanged(oldHostname, newHostname);
+		}
+	}
+
+	function site_onSiteKeyChanged() {
+		if (onSiteKeyChanged instanceof Function) {
+			onSiteKeyChanged(...arguments);
+		}
+	}
+
+	function site_onSiteRemoved(hostname, detailsElement) {
+		delete sites[hostname];
+		details.removeChild(detailsElement);
+
+		if (onSiteRemoved instanceof Function) {
+			onSiteRemoved(hostname);
+		}
+	}
+
+	function contains(hostname) {
+		return sites.hasOwnProperty(hostname);
+	}
+
+	function generateNextExampleHostname() {
+		if (!sites.hasOwnProperty("www.example.com")) {
+			return "www.example.com";
+		}
+
+		let counter = 1;
+
+		while (sites.hasOwnProperty(counter + ".example.com")) {
+			counter++;
+		}
+
+		return counter + ".example.com";
+	}
+
+	return {
+		element: details,
+		set onSiteHostnameChanged(callback) { onSiteHostnameChanged = callback },
+		set onSiteKeyChanged(callback) { onSiteKeyChanged = callback },
+		set onSiteRemoved(callback) { onSiteRemoved = callback },
+		contains: contains,
+	};
+}
+
+function SiteDetails(hostname, options) {
+	const details = document.createElement("details");
+
+	const summary = document.createElement("summary");
+	summary.appendChild(document.createTextNode(hostname));
+	details.appendChild(summary);
+
+	const removeButton = new RemoveButton("Remove");
+	removeButton.onClick = removeButton_onClick;
+	summary.appendChild(removeButton.element);
+
+	const detailsWrapper = document.createElement("div");
+	details.appendChild(detailsWrapper);
+
+	const hostnameInput = new HostnameInput("Hostname", hostname);
+	hostnameInput.onChanged = hostname_onChanged;
+	detailsWrapper.appendChild(hostnameInput.element);
+
+	const linkInput = new TextInput("Link query", options.links);
+	linkInput.onChanged = link_onChanged;
+	detailsWrapper.appendChild(linkInput.element);
+
+	const parentInput = new TextInput("Parent query", options.parent);
+	parentInput.onChanged = parent_onChanged;
+	detailsWrapper.appendChild(parentInput.element);
+
+	const parentSiblingsInput = new ParentSiblingsInput("Parent siblings", options.parentSiblings ?? "");
+	parentSiblingsInput.onChanged = parentSiblings_onChanged;
+	detailsWrapper.appendChild(parentSiblingsInput.element);
+
+	let onSiteRemoved, onSiteHostnameChanged, onSiteKeyChanged;
+
+	function hostname_onChanged(newHostname) {
+		if (onSiteHostnameChanged instanceof Function) {
+			onSiteHostnameChanged(hostname, newHostname);
+		}
+		summary.firstChild.nodeValue = newHostname;
+		hostname = newHostname;
+	}
+
+	function link_onChanged(newValue) {
+		dispatchDetailsChanged(hostname, "links", newValue);
+	}
+
+	function parent_onChanged(newValue) {
+		dispatchDetailsChanged(hostname, "parent", newValue);
+	}
+
+	function parentSiblings_onChanged(newValue) {
+		dispatchDetailsChanged(hostname, "parentSiblings", newValue);
+	}
+
+	function dispatchDetailsChanged() {
+		if (onSiteKeyChanged instanceof Function) {
+			onSiteKeyChanged(...arguments);
+		}
+	}
+
+	function removeButton_onClick() {
+		if (onSiteRemoved instanceof Function) {
+			onSiteRemoved(hostname, details);
+		}
+	}
+
+	return {
+		element: details,
+		set onSiteHostnameChanged(callback) { onSiteHostnameChanged = callback },
+		set onSiteKeyChanged(callback) { onSiteKeyChanged = callback },
+		set onSiteRemoved(callback) { onSiteRemoved = callback },
+	};
+}
+
+function RemoveButton(caption, timeout = 3000) {
+	const wrapper = document.createElement("div");
+	wrapper.classList.add("remove-button");
+
+	const removeWarning = document.createElement("span");
+	removeWarning.appendChild(document.createTextNode("Click again to confirm"));
+	removeWarning.classList.add("warning");
+	wrapper.appendChild(removeWarning);
+
+	const button = document.createElement("button");
+	button.classList.add("browser-style", "remove-button");
+	button.appendChild(document.createTextNode(caption));
+	button.addEventListener("click", button_onClick);
+	wrapper.appendChild(button);
+
+	let timeoutId, onClick;
+
+	function button_onClick(event) {
+		if (wrapper.classList.contains("confirm")) {
+			clearTimeout(timeoutId);
+			resetButton();
+
+			if (onClick instanceof Function) {
+				onClick();
+			}
+
+			return;
+		}
+
+		wrapper.classList.add("confirm");
+		timeoutId = setTimeout(resetButton, timeout)
+	}
+
+	function resetButton() {
+		wrapper.classList.remove("confirm");
+	}
+
+	return {
+		element: wrapper,
+		set onClick(callback) { onClick = callback },
+	};
+}
+
+function HostnameInput(caption, hostname) {
+	const textInput = new TextInput(caption, hostname);
+	textInput.onChanged = onTextInputChanged;
+
+	let onChanged;
+
+	function onTextInputChanged(newHostname) {
+		if (newHostname == hostname) {
+			textInput.error = "";
+			return;
+		}
+
+		if (newHostname.length == 0) {
+			textInput.error = "Hostname cannot be empty.";
+			return;
+		}
+
+		if (elements.sitesInput.contains(newHostname)) {
+			textInput.error = "Hostname already exists.";
+			return;
+		}
+
+		hostname = newHostname;
+		textInput.error = "";
+
+		if (onChanged instanceof Function) {
+			onChanged(newHostname);
+		}
+	}
+
+	return {
+		element: textInput.element,
+		set onChanged(callback) { onChanged = callback },
+	};
+}
+
+function TextInput(caption, value) {
+	const label = document.createElement("label");
+	label.classList.add("browser-style");
+
+	const span = document.createElement("span");
+	span.appendChild(document.createTextNode(caption));
+	label.appendChild(span);
+
+	const input = document.createElement("input");
+	input.value = value ?? "";
+	input.addEventListener("input", onInput);
+	label.appendChild(input);
+
+	let onChanged;
+
+	function onInput(event) {
+		if (onChanged instanceof Function) {
+			onChanged(event.target.value);
+		}
+	}
+
+	return {
+		element: label,
+		set error(error) { input.setCustomValidity(error); },
+		set onChanged(callback) { onChanged = callback },
+		set value(newValue) { input.value = newValue },
+	};
+}
+
+function ParentSiblingsInput(caption, value) {
+	const label = document.createElement("label");
+	label.classList.add("browser-style");
+
+	const span = document.createElement("span");
+	span.appendChild(document.createTextNode(caption));
+	label.appendChild(span);
+
+	const input = document.createElement("input");
+	input.value = value;
+	input.type = "number";
+	input.min = "1";
+	input.addEventListener("beforeinput", onBeforeInput);
+	input.addEventListener("input", onInput);
+	label.appendChild(input);
+
+	let onChanged;
+
+	function onBeforeInput(event) {
+		/* Do not prevent special characters like Backspace. */
+		if (event.data == null) {
+			return;
+		}
+
+		if (!/^[0-9]+$/.test(event.data)) {
+			event.preventDefault();
+		}
+	}
+
+	function onInput(event) {
+		if (!event.target.validity.valid) {
+			return;
+		}
+
+		if (onChanged instanceof Function) {
+			onChanged(parseInt(event.target.value, 10));
+		}
+	}
+
+	return {
+		element: label,
+		set onChanged(callback) { onChanged = callback },
+	};
 }

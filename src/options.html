@@ -3,8 +3,72 @@
 	<head>
 		<meta charset="utf-8"/>
 		<style>
+			body {
+				padding: 10px 5px;
+			}
+
 			.child-option {
 				margin-left: 30px;
+			}
+
+			details > details {
+				border: 1px solid #aaa;
+				margin-bottom: -1px;
+			}
+
+			details > details > div {
+				padding: 0 1em;
+			}
+
+			details > summary {
+				padding: 1em 0;
+				font-weight: bold;
+			}
+
+			details > details > summary {
+				padding: 1em;
+			}
+
+			details > details[open] > summary {
+				border-bottom: 1px dashed #aaa;
+			}
+
+			details label {
+				display: block;
+				margin: 1em 0;
+			}
+
+			details span {
+				display: inline-block;
+				min-width: 100px;
+			}
+
+			input:invalid {
+				background: hsla(0, 100%, 75%, 1);
+			}
+
+			.add-button, .add-button:focus, .add-button:focus-visible, .add-button:active {
+			}
+
+			.remove-button {
+				float: right;
+			}
+
+			.remove-button > button {
+				margin-top: -3px;
+			}
+
+			.remove-button > .warning {
+				margin-right: 5px;
+				color: hsla(0, 100%, 40%, 1);
+			}
+
+			.remove-button:not(.confirm) > .warning {
+				display: none;
+			}
+
+			textarea {
+				min-height: 10em;
 			}
 		</style>
 	</head>
@@ -23,7 +87,7 @@
 		<label class="browser-style">Page action command on click: <select class="browser-style" id="pageActionCommand" name="pageActionCommand"></select><span></span></label>
 		<label class="browser-style">Page action command on middle click: <select class="browser-style" id="pageActionMiddleClickCommand" name="pageActionMiddleClickCommand"></select><span></span></label>
 		<label>Custom style:</label>
-		<textarea id="globalStyle"></textarea>
+		<textarea id="globalStyle" class="browser-style"></textarea>
 		<script src="js/options.js"></script>
 	</body>
 </html>
