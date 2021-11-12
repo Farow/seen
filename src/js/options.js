@@ -49,27 +49,32 @@ const BackgroundPort = (() => {
 		console.log("Unhandled port message: ", message);
 	}
 
-	function getConfigOptions() {
+	function getConfig() {
 		if (port instanceof Object) {
-			port.postMessage({ command: "getConfigOptions", });
+			port.postMessage({ command: "getConfig", });
 			return new Promise((resolve, reject) => pendingPromises.push(resolve));
 		}
 
 		return Promise.reject("Port not connected.");
 	}
 
-	function notifyOptionChanged(option, value) {
-		port.postMessage({ command: "optionChanged", args: [ option, value ], });
+	function notify(message) {
+		try {
+			port.postMessage(message);
+		}
+		catch (error) {
+			console.error(error);
+		}
 	}
 
 	return {
-		getConfigOptions: getConfigOptions,
-		notifyOptionChanged: notifyOptionChanged,
+		getConfig: getConfig,
+		notify: notify,
 	};
 })();
 
 (async () => {
-	const { options, availableCommands } = await BackgroundPort.getConfigOptions();
+	const { options, availableCommands } = await BackgroundPort.getConfig();
 	restoreOptions();
 	addListeners();
 
@@ -164,7 +169,7 @@ const BackgroundPort = (() => {
 			value = event.target.value;
 		}
 
-		BackgroundPort.notifyOptionChanged(option, value);
+		BackgroundPort.notify({ command: "optionChanged", args: [ option, value ] });
 	}
 })();
 

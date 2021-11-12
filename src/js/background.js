@@ -355,10 +355,8 @@ function OptionsPort(port, optionChangedListener) {
 		const args = message.hasOwnProperty('args') ? message.args : [ ];
 
 		switch (message.command) {
-			case "getConfigOptions":
+			case "getConfig":
 				port.postMessage({
-					// A proxy object cannot be directly cloned.
-					options: Object.assign({}, Config.options),
 					availableCommands: [
 						{ id: "clearHistory", caption: "Clear history" },
 						{ id: "markAllNew", caption: "Mark all as new" },
@@ -366,6 +364,9 @@ function OptionsPort(port, optionChangedListener) {
 						{ id: "openOptionsPage", caption: "Open options page" },
 						{ id: "toggleVisibility", caption: "Toogle visibility" },
 					],
+
+					// A proxy object cannot be directly cloned.
+					options: Object.assign({}, Config.options),
 				});
 				break;
 
