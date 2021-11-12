@@ -91,30 +91,23 @@ const Config = (() => {
 	*/
 
 	async function loadConfig() {
-		const sitesPromise = fetch(browser.runtime.getURL("sites.json"))
-		.then(response => response.json())
-		.catch(error => { console.error("Could not load sites.json: ", error); return { }; });
-
 		/* Note: storage.sync can retain data even if the extension is uninstalled while sync is disabled. */
-		const configPromise = browser.storage.sync.get()
-		.catch(error => { console.error("Could not load config: ", error); return { } });
+		const storedConfig = await browser.storage.sync.get()
+		.catch(error => { console.error("Could not load storage: ", error); return { } });
 
-		await Promise.all([sitesPromise, configPromise])
-		.then(result => {
-			const [sitesResult, storedConfig] = result;
+		if (storedConfig.hasOwnProperty("options")) {
+			Object.assign(options, storedConfig.options);
+		}
 
-			if (Object.keys(sitesResult).length > 0) {
-				Object.assign(sites, sitesResult);
-			}
-
-			if (storedConfig.hasOwnProperty("sites")) {
-				Object.assign(sites, storedConfig.sites);
-			}
-
-			if (storedConfig.hasOwnProperty("options")) {
-				Object.assign(options, storedConfig.options);
-			}
-		});
+		if (storedConfig.hasOwnProperty("sites")) {
+			Object.assign(sites, storedConfig.sites);
+		}
+		else {
+			const defaultSites = await fetch(browser.runtime.getURL("sites.json"))
+			.then(response => response.json())
+			.catch(error => { console.error("Could not load sites.json: ", error); return { }; });
+			Object.assign(sites, defaultSites);
+		}
 	}
 
 	function tokensMatch(siteTokens, hostnameTokens) {
