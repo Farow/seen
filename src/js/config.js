@@ -124,7 +124,7 @@ const Config = (() => {
 			return false;
 		}
 
-		for (const i = 0; i < a.length; a++) {
+		for (let i = 0; i < a.length; i++) {
 			if (a[i] != b[i]) {
 				return false;
 			}
