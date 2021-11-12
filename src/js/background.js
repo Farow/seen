@@ -241,7 +241,7 @@ function openOptionsPage() {
 }
 
 function ContentScriptPort(port) {
-	const hostname = new URL(port.sender.tab.url).hostname;
+	const hostname = new URL(port.sender.url).hostname;
 
 	port.onMessage.addListener(messageReceived);
 	port.onDisconnect.addListener(portDisconnected);
