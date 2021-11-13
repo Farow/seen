@@ -70,6 +70,13 @@ Promise.all([
 .then(init);
 
 const registeredScripts = { };
+const availableCommands = [
+	{ id: "toggleVisibility", caption: "Toogle visibility", requiresContentScript: true },
+	{ id: "markAllSeen", caption: "Mark all as seen", requiresContentScript: true },
+	{ id: "markAllNew", caption: "Mark all as new", requiresContentScript: true },
+	{ id: "clearHistory", caption: "Clear history", requiresContentScript: false },
+	{ id: "openOptionsPage", caption: "Open options page", requiresContentScript: false },
+];
 
 function init(result) {
 	const grantedPermissions = result[0];
@@ -78,35 +85,13 @@ function init(result) {
 		registerContentScript(origin);
 	}
 
-	browser.menus.create({
-		id: "toggleVisibility",
-		contexts: ["page_action"],
-		title: "Toogle visibility",
-	});
-
-	browser.menus.create({
-		id: "markAllSeen",
-		contexts: ["page_action"],
-		title: "Mark all as seen",
-	});
-
-	browser.menus.create({
-		id: "markAllNew",
-		contexts: ["page_action"],
-		title: "Mark all as new",
-	});
-
-	browser.menus.create({
-		id: "clearHistory",
-		contexts: ["page_action"],
-		title: "Clear history",
-	});
-
-	browser.menus.create({
-		id: "openOptionsPage",
-		contexts: ["page_action"],
-		title: "Open options page",
-	});
+	for (const command of availableCommands) {
+		browser.menus.create({
+			id: command.id,
+			contexts: ["page_action"],
+			title: command.caption,
+		});
+	}
 
 	browser.menus.onShown.addListener(onMenuShown);
 	browser.menus.onClicked.addListener(onMenuClick);
@@ -131,10 +116,11 @@ function registerContentScript(origin) {
 
 function onMenuShown(info, tab) {
 	const contentScriptLoaded = ContentScriptPorts.containsTab(tab.id);
-	const contentScriptMenuItems = ["toggleVisibility", "markAllSeen", "markAllNew"];
 
-	for (const menuId of contentScriptMenuItems) {
-		browser.menus.update(menuId, { enabled: contentScriptLoaded });
+	for (const command of availableCommands) {
+		if (command.requiresContentScript) {
+			browser.menus.update(command.id, { enabled: contentScriptLoaded });
+		}
 	}
 
 	browser.menus.refresh();
@@ -157,7 +143,7 @@ function onMenuClick(info, tab) {
 			break;
 
 		default:
-			console.warn("Unhandled menu item click:", info);
+			console.warn("Unhandled menu item click:", info.menuItemId);
 	}
 }
 
@@ -192,27 +178,27 @@ function onOptionChanged(option, value) {
 }
 
 function actionClick(tab, clickData) {
-	const actionCommand = clickData == null || clickData.button == 0
+	const commandId = clickData == null || clickData.button == 0
 		? Config.options.pageActionCommand
 		: Config.options.pageActionMiddleClickCommand;
-
+	const command = availableCommands.find(c => c.id == commandId);
 
 	/* handle middle click */
 	if (clickData != null && clickData.button == 1) {
-		const canExecuteCommand = ContentScriptPorts.containsTab(tab.id) || ["clearHistory", "openOptionsPage"].indexOf(actionCommand) > -1;
+		const canExecuteCommand = !command.requiresContentScript || ContentScriptPorts.containsTab(tab.id);
 
 		if (canExecuteCommand) {
-			onMenuClick({ menuItemId: actionCommand }, tab);
+			onMenuClick({ menuItemId: commandId }, tab);
 		}
 		else {
-			console.warn("Cannot perform pageActionMiddleClickCommand:", actionCommand);
+			console.warn("Cannot perform pageActionMiddleClickCommand:", commandId);
 		}
 
 		return;
 	}
 
 	if (ContentScriptPorts.containsTab(tab.id)) {
-		onMenuClick({ menuItemId: actionCommand }, tab);
+		onMenuClick({ menuItemId: commandId }, tab);
 		return;
 	}
 
@@ -360,13 +346,7 @@ function OptionsPort(port, optionChangedListener) {
 		switch (message.command) {
 			case "getConfig":
 				port.postMessage({
-					availableCommands: [
-						{ id: "clearHistory", caption: "Clear history" },
-						{ id: "markAllNew", caption: "Mark all as new" },
-						{ id: "markAllSeen", caption: "Mark all as seen" },
-						{ id: "openOptionsPage", caption: "Open options page" },
-						{ id: "toggleVisibility", caption: "Toogle visibility" },
-					],
+					availableCommands: availableCommands,
 
 					// A proxy object cannot be directly cloned.
 					options: Object.assign({}, Config.options),
