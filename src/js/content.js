@@ -184,6 +184,8 @@ const BackgroundPort = (() => {
 		switch (option) {
 			case "activateAutomatically":
 			case "hideSeenLinksAutomatically":
+			case "pageActionCommand":
+			case "pageActionMiddleClickCommand":
 				break;
 
 			case "globalStyle":
