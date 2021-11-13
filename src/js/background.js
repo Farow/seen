@@ -74,6 +74,7 @@ const availableCommands = [
 	{ id: "toggleVisibility", caption: "Toogle visibility", requiresContentScript: true },
 	{ id: "markAllSeen", caption: "Mark all as seen", requiresContentScript: true },
 	{ id: "markAllNew", caption: "Mark all as new", requiresContentScript: true },
+	{ id: "toggleStyles", caption: "Toggle styles", requiresContentScript: true },
 	{ id: "clearHistory", caption: "Clear history", requiresContentScript: false },
 	{ id: "openOptionsPage", caption: "Open options page", requiresContentScript: false },
 ];
@@ -135,6 +136,7 @@ function onMenuClick(info, tab) {
 		case "markAllNew":
 		case "markAllSeen":
 		case "toggleVisibility":
+		case "toggleStyles":
 			ContentScriptPorts.notifyTab(tab.id, { command: info.menuItemId });
 			break;
 

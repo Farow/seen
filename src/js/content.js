@@ -153,6 +153,10 @@ const BackgroundPort = (() => {
 				onSeenUrl(...args);
 				break;
 
+			case "toggleStyles":
+				onToggleStyles(...args);
+				break;
+
 			case "toggleVisibility":
 				onToggleVisibility(...args);
 				break;
@@ -208,6 +212,11 @@ const BackgroundPort = (() => {
 		}
 
 		links.filter(l => l.element.href == url).map(l => l.markSeen());
+	}
+
+	function onToggleStyles() {
+		const style = document.getElementById("seenStylesheet");
+		style.disabled = !style.disabled;
 	}
 
 	function onToggleVisibility() {
