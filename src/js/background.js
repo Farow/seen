@@ -319,12 +319,16 @@ function ContentScriptPort(port) {
 			Config.setSeen(url, hostname);
 		}
 
+		// Force disconnect as port.onDisconnect is not fired in some cases.
+		// https://bugzilla.mozilla.org/show_bug.cgi?id=1370368
+		portDisconnected();
 		return Promise.resolve(true);
 	}
 
 	function portDisconnected() {
 		ContentScriptPorts.remove(port);
 		History.removeListener(onHistoryAdded);
+		port.onDisconnect.removeListener(portDisconnected);
 	}
 
 	return {

@@ -122,7 +122,7 @@ const BackgroundPort = (() => {
 		addStyle();
 
 		BackgroundPort.addListener(onCommand);
-		updateUnloadListener();
+		window.addEventListener("unload", notifyUnload);
 	}
 
 	function linkAdded(element) {
@@ -184,6 +184,7 @@ const BackgroundPort = (() => {
 		switch (option) {
 			case "activateAutomatically":
 			case "hideSeenLinksAutomatically":
+			case "markAllSeenOnUnload":
 			case "pageActionCommand":
 			case "pageActionMiddleClickCommand":
 				break;
@@ -196,10 +197,6 @@ const BackgroundPort = (() => {
 			case "markSeenOn":
 			case "markSeenOnFocus":
 				links.map(l => l.updateListener());
-				break;
-
-			case "markAllSeenOnUnload":
-				updateUnloadListener();
 				break;
 
 			default:
@@ -239,17 +236,8 @@ const BackgroundPort = (() => {
 		});
 	}
 
-	function updateUnloadListener() {
-		if (site.markAllSeenOnUnload) {
-			window.addEventListener("unload", notifyUnload);
-		}
-		else {
-			window.removeEventListener("unload", notifyUnload);
-		}
-	}
-
 	function notifyUnload() {
-		const newUrls = links.filter(l => l.isNew).map(l => l.element.href);
+		const newUrls = site.markAllSeenOnUnload ? links.filter(l => l.isNew).map(l => l.element.href) : [ ];
 		BackgroundPort.postMessage({ command: "unload", args: [ newUrls ], });
 	}
 
