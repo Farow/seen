@@ -46,7 +46,7 @@ const ContentScriptPorts = (() => {
 		const index = ports.findIndex(c => c.tabId == port.sender.tab.id);
 
 		if (index < 0) {
-			console.warn("Port has not been added.");
+			console.warn("Port has not been removed: ", port.sender.tab.id);
 			return
 		}
 
