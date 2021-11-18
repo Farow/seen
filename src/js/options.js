@@ -29,6 +29,7 @@ const elements = {
 	globalStyleInput: document.getElementById("globalStyle"),
 	pageActionCommandInput: document.getElementById("pageActionCommand"),
 	pageActionMiddleClickCommandInput: document.getElementById("pageActionMiddleClickCommand"),
+	exportInput: document.getElementById("export"),
 };
 
 const BackgroundPort = (() => {
@@ -135,6 +136,7 @@ const BackgroundPort = (() => {
 		elements.sitesInput.onSiteHostnameChanged = onSiteHostnameChanged;
 		elements.sitesInput.onSiteKeyChanged = onSiteKeyChanged;
 		elements.sitesInput.onSiteRemoved = onSiteRemoved;
+		elements.exportInput.addEventListener("click", onExport);
 	}
 
 	function onSiteHostnameChanged(oldHostname, newHostname) {
@@ -152,6 +154,20 @@ const BackgroundPort = (() => {
 	function onSiteRemoved(hostname) {
 		delete sites[hostname];
 		BackgroundPort.notify({ command: "siteRemoved", args: [ hostname ] });
+	}
+
+	function onExport() {
+		saveJson(JSON.stringify({ options, sites }, null, 4));
+	}
+
+	function saveJson(data) {
+		const saveHelper = document.createElement("a");
+		saveHelper.href = URL.createObjectURL(new Blob([ data ], { type : "application/json" }));
+		saveHelper.download = `seen-${ new Date().toISOString().slice(0, 10) }.json`;
+
+		document.body.appendChild(saveHelper);
+		saveHelper.click();
+		document.body.removeChild(saveHelper);
 	}
 
 	function requestHistoryPermission(event) {

@@ -70,6 +70,14 @@
 			textarea {
 				min-height: 10em;
 			}
+
+			.flex {
+				display: flex;
+			}
+
+			.flex-end {
+				justify-content: flex-end;
+			}
 		</style>
 	</head>
 	<body>
@@ -88,6 +96,7 @@
 		<label class="browser-style">Page action command on middle click: <select class="browser-style" id="pageActionMiddleClickCommand" name="pageActionMiddleClickCommand"></select><span></span></label>
 		<label>Custom style:</label>
 		<textarea id="globalStyle" class="browser-style"></textarea>
+		<div class="flex flex-end"><button id="export" class="browser-style">Export</button></div>
 		<script src="js/options.js"></script>
 	</body>
 </html>
