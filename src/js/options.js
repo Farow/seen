@@ -138,14 +138,19 @@ const BackgroundPort = (() => {
 	}
 
 	function onSiteHostnameChanged(oldHostname, newHostname) {
+		const site = sites[oldHostname];
+		delete sites[oldHostname];
+		sites[newHostname] = site;
 		BackgroundPort.notify({ command: "siteHostnameChanged", args: [ oldHostname, newHostname ] });
 	}
 
 	function onSiteKeyChanged(hostname, key, value) {
+		sites[hostname][key] = value;
 		BackgroundPort.notify({ command: "siteKeyChanged", args: [ hostname, key, value ] });
 	}
 
 	function onSiteRemoved(hostname) {
+		delete sites[hostname];
 		BackgroundPort.notify({ command: "siteRemoved", args: [ hostname ] });
 	}
 
