@@ -116,7 +116,7 @@ const BackgroundPort = (() => {
 		}
 
 		elements.globalStyleInput.value = options.globalStyle;
-		document.body.appendChild(elements.sitesInput.element);
+		document.body.insertBefore(elements.sitesInput.element, elements.exportInput.parentElement);
 	}
 
 	function addListeners() {
