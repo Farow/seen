@@ -360,6 +360,10 @@ function OptionsPort(port, optionChangedListener) {
 				});
 				break;
 
+			case "import":
+				onImport(...args);
+				break;
+
 			case "optionChanged":
 				onOptionChanged(...args);
 				break;
@@ -379,6 +383,12 @@ function OptionsPort(port, optionChangedListener) {
 			default:
 				console.warn("Unknown options command:", message.command);
 		}
+	}
+
+	function onImport(data) {
+		Config.importJson(data)
+		.then(result => port.postMessage({ command: "importSuccess", args: [] }))
+		.catch(error => port.postMessage({ command: "importError", args: [ "" + error ]}));
 	}
 
 	function onOptionChanged(option, value) {

@@ -78,6 +78,14 @@
 			.flex-end {
 				justify-content: flex-end;
 			}
+
+			.flex-gap-5 {
+				gap: 5px;
+			}
+
+			.controls {
+				padding: 10px 0;
+			}
 		</style>
 	</head>
 	<body>
@@ -96,7 +104,7 @@
 		<label class="browser-style">Page action command on middle click: <select class="browser-style" id="pageActionMiddleClickCommand" name="pageActionMiddleClickCommand"></select><span></span></label>
 		<label>Custom style:</label>
 		<textarea id="globalStyle" class="browser-style"></textarea>
-		<div class="flex flex-end"><button id="export" class="browser-style">Export</button></div>
+		<div class="flex flex-end flex-gap-5 controls"><input id="importHelper" type="file" accept="application/json" hidden /><button id="import" class="browser-style">Import</button><button id="export" class="browser-style">Export</button></div>
 		<script src="js/options.js"></script>
 	</body>
 </html>

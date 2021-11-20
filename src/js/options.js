@@ -29,6 +29,8 @@ const elements = {
 	globalStyleInput: document.getElementById("globalStyle"),
 	pageActionCommandInput: document.getElementById("pageActionCommand"),
 	pageActionMiddleClickCommandInput: document.getElementById("pageActionMiddleClickCommand"),
+	importHelperInput: document.getElementById("importHelper"),
+	importInput: document.getElementById("import"),
 	exportInput: document.getElementById("export"),
 };
 
@@ -44,6 +46,27 @@ const BackgroundPort = (() => {
 		if (message.hasOwnProperty('options')) {
 			pendingPromises.map(resolve => resolve(message));
 			pendingPromises.length = 0;
+			return;
+		}
+
+		if (message.hasOwnProperty("command")) {
+			const args = message.hasOwnProperty("args") ? message.args : [ ];
+
+			switch (message.command) {
+				case "importError":
+					alert("Import failed: " + args[0]);
+					break;
+
+				case "importSuccess":
+					// TODO: handle more gracefully.
+					alert("Import succeded.");
+					location.reload();
+					break;
+
+				default:
+					console.warn("Unhandled command:", message.command);
+			}
+
 			return;
 		}
 
@@ -136,6 +159,8 @@ const BackgroundPort = (() => {
 		elements.sitesInput.onSiteHostnameChanged = onSiteHostnameChanged;
 		elements.sitesInput.onSiteKeyChanged = onSiteKeyChanged;
 		elements.sitesInput.onSiteRemoved = onSiteRemoved;
+		elements.importInput.addEventListener("click", onImport);
+		elements.importHelperInput.addEventListener("change", onImportFile);
 		elements.exportInput.addEventListener("click", onExport);
 	}
 
@@ -154,6 +179,20 @@ const BackgroundPort = (() => {
 	function onSiteRemoved(hostname) {
 		delete sites[hostname];
 		BackgroundPort.notify({ command: "siteRemoved", args: [ hostname ] });
+	}
+
+	function onImport() {
+		elements.importHelperInput.click();
+	}
+
+	function onImportFile(event) {
+		const reader = new FileReader();
+		reader.addEventListener("load", onImportFileLoaded);
+		reader.readAsText(event.target.files[0]);
+	}
+
+	function onImportFileLoaded(event) {
+		BackgroundPort.notify({ command: "import", args: [ event.target.result ] });
 	}
 
 	function onExport() {

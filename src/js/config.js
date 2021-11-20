@@ -49,6 +49,25 @@ const Config = (() => {
 		return readyPromise;
 	}
 
+	function importJson(data) {
+		try {
+			const newConfig = JSON.parse(data);
+
+			if (!newConfig.hasOwnProperty("seenVersion")) {
+				return Promise.reject("seenVersion key missing from imported data.");
+			}
+
+			Object.assign(options, newConfig.options);
+			Object.assign(sites, newConfig.sites);
+			browser.storage.sync.set({ options: options, sites: sites });
+
+			return Promise.resolve(true);
+		}
+		catch (error) {
+			return Promise.reject(error);
+		}
+	}
+
 	function ready() {
 		if (readyPromise == null) {
 			return init();
@@ -161,6 +180,7 @@ const Config = (() => {
 
 		/* Methods */
 		ready: ready,
+		importJson: importJson,
 		getSiteConfig: getSiteConfig,
 		checkSeen: checkSeen,
 		clearHistory: clearHistory,
