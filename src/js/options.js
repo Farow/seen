@@ -157,7 +157,8 @@ const BackgroundPort = (() => {
 	}
 
 	function onExport() {
-		saveJson(JSON.stringify({ options, sites }, null, 4));
+		const version = browser.runtime.getManifest().version;
+		saveJson(JSON.stringify({ seenVersion: version, options, sites }, null, 4));
 	}
 
 	function saveJson(data) {
