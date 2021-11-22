@@ -382,6 +382,12 @@ function SiteDetails(hostname, options) {
 	parentSiblingsInput.onChanged = parentSiblings_onChanged;
 	detailsWrapper.appendChild(parentSiblingsInput.element);
 
+	const styleInput = document.createElement("textarea");
+	styleInput.value = options.style ?? "";
+	styleInput.classList.add("browser-style");
+	styleInput.addEventListener("change", style_onChanged);
+	detailsWrapper.appendChild(styleInput);
+
 	let onSiteRemoved, onSiteHostnameChanged, onSiteKeyChanged;
 
 	function hostname_onChanged(newHostname) {
@@ -402,6 +408,10 @@ function SiteDetails(hostname, options) {
 
 	function parentSiblings_onChanged(newValue) {
 		dispatchDetailsChanged(hostname, "parentSiblings", newValue);
+	}
+
+	function style_onChanged() {
+		dispatchDetailsChanged(hostname, "style", styleInput.value);
 	}
 
 	function dispatchDetailsChanged() {
