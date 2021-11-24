@@ -179,7 +179,7 @@ const BackgroundPort = (() => {
 	}
 
 	function onOptionChanged(option, value) {
-		site[option] = value;
+		site.options[option] = value;
 
 		switch (option) {
 			case "activateAutomatically":
@@ -206,7 +206,7 @@ const BackgroundPort = (() => {
 
 	/* Mark seen urls from other tabs. */
 	function onSeenUrl(url, hostname) {
-		if (site.trackSeparately && hostname != site.hostname) {
+		if (site.options.trackSeparately && hostname != site.hostname) {
 			return;
 		}
 
@@ -237,7 +237,7 @@ const BackgroundPort = (() => {
 	}
 
 	function notifyUnload() {
-		const newUrls = site.markAllSeenOnUnload ? links.filter(l => l.isNew).map(l => l.element.href) : [ ];
+		const newUrls = site.options.markAllSeenOnUnload ? links.filter(l => l.isNew).map(l => l.element.href) : [ ];
 		BackgroundPort.postMessage({ command: "unload", args: [ newUrls ], });
 	}
 
@@ -248,7 +248,7 @@ const BackgroundPort = (() => {
 		}
 
 		const style = createStyleElement();
-		style.appendChild(document.createTextNode(site.globalStyle));
+		style.appendChild(document.createTextNode(site.options.globalStyle));
 		style.appendChild(document.createTextNode(site.style));
 
 		requestAnimationFrame(() => {
@@ -274,7 +274,7 @@ const BackgroundPort = (() => {
 			.then(result => {
 				visited = result;
 				if (visited) {
-					if (site.hideSeenLinksAutomatically) {
+					if (site.options.hideSeenLinksAutomatically) {
 						addClass("seen", "hidden");
 					}
 					else {
@@ -352,11 +352,11 @@ const BackgroundPort = (() => {
 				return;
 			}
 
-			const event = site.markSeenOn == "click" ? "mouseup" : "mouseover";
+			const event = site.options.markSeenOn == "click" ? "mouseup" : "mouseover";
 			element.addEventListener(event, setSeen);
 			listeners.push({ element: element, event: event, callback: setSeen, });
 
-			if (site.markSeenOnFocus) {
+			if (site.options.markSeenOnFocus) {
 				element.addEventListener("focusin", setSeen);
 				listeners.push({ element: element, event: "focusin", callback: setSeen, });
 			}
