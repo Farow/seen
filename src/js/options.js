@@ -303,9 +303,6 @@ function SitesInput(sites) {
 
 	function site_onSiteHostnameChanged(oldHostname, newHostname) {
 		if (onSiteHostnameChanged instanceof Function) {
-			const site = sites[oldHostname];
-			delete sites[oldHostname];
-			sites[newHostname] = site;
 			onSiteHostnameChanged(oldHostname, newHostname);
 		}
 	}
@@ -317,7 +314,6 @@ function SitesInput(sites) {
 	}
 
 	function site_onSiteRemoved(hostname, detailsElement) {
-		delete sites[hostname];
 		details.removeChild(detailsElement);
 
 		if (onSiteRemoved instanceof Function) {
