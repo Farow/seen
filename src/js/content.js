@@ -118,7 +118,7 @@ const BackgroundPort = (() => {
 			linkAdded(link);
 		}
 
-		const observer = new PageObserver(site.links, linkAdded);
+		const observer = new PageObserver({ query: site.links, callback: linkAdded });
 		addStyle();
 
 		BackgroundPort.addListener(onCommand);
@@ -424,7 +424,7 @@ const BackgroundPort = (() => {
 	}
 })();
 
-function PageObserver(query, callback) {
+function PageObserver(...targets) {
 	const observer = new MutationObserver(mutationCallback);
 	observer.observe(document, { subtree: true, childList: true });
 
@@ -433,20 +433,22 @@ function PageObserver(query, callback) {
 		for (const mutation of mutations) {
 			for (const node of mutation.addedNodes) {
 				if (node.nodeType == Node.ELEMENT_NODE) {
-					checkForValidLinks(node);
+					checkForMatches(node);
 				}
 			}
 		}
 	}
 
-	function checkForValidLinks(element) {
-		if (element.matches(query) && callback instanceof Function) {
-			callback(element);
-			return;
+	function checkForMatches(element) {
+		for (const target of targets) {
+			if (target.callback instanceof Function && element.matches(target.query)) {
+				target.callback(element);
+				return;
+			}
 		}
 
 		for (const child of element.children) {
-			checkForValidLinks(child);
+			checkForMatches(child);
 		}
 	}
 }
