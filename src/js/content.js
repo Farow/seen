@@ -210,7 +210,7 @@ const BackgroundPort = (() => {
 			return;
 		}
 
-		links.filter(l => l.element.href == url).map(l => l.markSeen());
+		links.filter(l => l.id == url).map(l => l.markSeen());
 	}
 
 	function onToggleStyles() {
@@ -237,7 +237,7 @@ const BackgroundPort = (() => {
 	}
 
 	function notifyUnload() {
-		const newUrls = site.options.markAllSeenOnUnload ? links.filter(l => l.isNew).map(l => l.element.href) : [ ];
+		const newUrls = site.options.markAllSeenOnUnload ? links.filter(l => l.isNew).map(l => l.id) : [ ];
 		BackgroundPort.postMessage({ command: "unload", args: [ newUrls ], });
 	}
 
@@ -267,10 +267,15 @@ const BackgroundPort = (() => {
 	function Link(element) {
 		let visited;
 		const listeners = [ ];
+		const id = site.hasOwnProperty("idKey") && site.idKey.length > 0 ? element[site.idKey] : element.href;
 
 		/* public methods */
 		function checkSeen() {
-			return BackgroundPort.postMessage({ command: "checkSeen", args: [ element.href, site.hostname ] })
+			if (id == null || id.length == 0) {
+				throw new Error("Invalid query or id specified.");
+			}
+
+			return BackgroundPort.postMessage({ command: "checkSeen", args: [ id, site.hostname ] })
 			.then(result => {
 				visited = result;
 				if (visited) {
@@ -312,14 +317,14 @@ const BackgroundPort = (() => {
 		}
 
 		function setNew() {
-			BackgroundPort.postMessage({ command: "setNew", args: [ element.href, site.hostname ] })
+			BackgroundPort.postMessage({ command: "setNew", args: [ id, site.hostname ] })
 			.then(result => markNew())
 			.catch(error => { addClass("error"); console.error("setNew error: ", error); });
 		}
 
 		function setSeen(event) {
 			removeEventListener();
-			BackgroundPort.postMessage({ command: "setSeen", args: [ element.href, site.hostname ] })
+			BackgroundPort.postMessage({ command: "setSeen", args: [ id, site.hostname ] })
 			.then(result => markSeen())
 			.catch(error => { addClass("error"); console.error("setSeen error: ", error); });
 		}
@@ -414,6 +419,7 @@ const BackgroundPort = (() => {
 			get isNew() { return listeners.length != 0; },
 			checkSeen: checkSeen,
 			hideIfSeen: hideIfSeen,
+			id: id,
 			markNew: markNew,
 			markSeen: markSeen,
 			setNew: setNew,

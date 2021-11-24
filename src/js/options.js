@@ -383,6 +383,10 @@ function SiteDetails(name, options) {
 	parentSiblingsInput.onChanged = parentSiblings_onChanged;
 	detailsWrapper.appendChild(parentSiblingsInput.element);
 
+	const idKeyInput = TextInput("Identifier key", options.idKey ?? "");
+	idKeyInput.onChanged = idKey_onChanged;
+	detailsWrapper.appendChild(idKeyInput.element);
+
 	const styleInput = document.createElement("textarea");
 	styleInput.value = options.style ?? "";
 	styleInput.classList.add("browser-style");
@@ -417,6 +421,10 @@ function SiteDetails(name, options) {
 
 	function style_onChanged() {
 		dispatchDetailsChanged(name, "style", styleInput.value);
+	}
+
+	function idKey_onChanged(newValue) {
+		dispatchDetailsChanged(name, "idKey", newValue);
 	}
 
 	function dispatchDetailsChanged() {
