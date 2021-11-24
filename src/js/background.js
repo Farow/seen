@@ -368,8 +368,8 @@ function OptionsPort(port, optionChangedListener) {
 				onOptionChanged(...args);
 				break;
 
-			case "siteHostnameChanged":
-				onSiteHostnameChanged(...args);
+			case "siteNameChanged":
+				onSiteNameChanged(...args);
 				break;
 
 			case "siteKeyChanged":
@@ -397,23 +397,23 @@ function OptionsPort(port, optionChangedListener) {
 		}
 	}
 
-	function onSiteHostnameChanged(oldHostname, newHostname) {
-		const site = Config.sites[oldHostname];
-		delete Config.sites[oldHostname];
-		Config.sites[newHostname] = site;
+	function onSiteNameChanged(oldName, newName) {
+		const site = Config.sites[oldName];
+		delete Config.sites[oldName];
+		Config.sites[newName] = site;
 	}
 
-	function onSiteKeyChanged(hostname, key, value) {
+	function onSiteKeyChanged(name, key, value) {
 		/* Proxy changes do not trigger on child keys. */
-		const site = Config.sites[hostname] ?? { };
+		const site = Config.sites[name] ?? { };
 		site[key] = value;
-		Config.sites[hostname] = site;
+		Config.sites[name] = site;
 	}
 
-	function onSiteRemoved(hostname) {
-		const origin = `*://${ hostname }/*`;
+	function onSiteRemoved(name) {
+		const origin = `*://${ Config.sites[name].hostname }/*`;
 
-		delete Config.sites[hostname];
+		delete Config.sites[name];
 
 		if (registeredScripts.hasOwnProperty(origin)) {
 			/* Removing an origin does not seem to affect registered scripts. */

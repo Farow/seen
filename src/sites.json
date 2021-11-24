@@ -1,14 +1,17 @@
 {
-	"lobste.rs": {
-		"links": ".u-url",
-		"parent": ".story"
-	},
-	"news.ycombinator.com": {
+	"Hacker News": {
+		"hostname": "news.ycombinator.com",
 		"links": ".itemlist .titlelink",
 		"parent": ".athing",
 		"parentSiblings": 2
 	},
-	"reddit.com": {
+	"Lobsters": {
+		"hostname": "lobste.rs",
+		"links": ".u-url",
+		"parent": ".story"
+	},
+	"reddit": {
+		"hostname": "reddit.com",
 		"links": ".thing.link[data-context=\"listing\"]:not(.promoted) > .entry a.title, .Post a[data-click-id=\"body\"]",
 		"parent": ".thing, .Post",
 		"style": ".seen, .dupe { overflow: hidden; } .new.message { box-shadow: none; }"

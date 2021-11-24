@@ -78,11 +78,11 @@ const Config = (() => {
 
 	function getSiteConfig(hostname) {
 		const hostnameTokens = hostname.split('.');
-		for (const site in sites) {
-			const siteTokens = site.split('.');
+		for (const site of Object.values(sites)) {
+			const siteTokens = site.hostname.split('.');
 
 			if (tokensMatch(siteTokens, hostnameTokens)) {
-				return { isSupported: true, hostname: site, ...sites[site], ...options };
+				return { isSupported: true, hostname: site.hostname, ...site, ...options };
 			}
 		}
 

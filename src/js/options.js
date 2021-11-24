@@ -156,7 +156,7 @@ const BackgroundPort = (() => {
 		elements.globalStyleInput.addEventListener("change", optionChanged);
 		elements.pageActionCommandInput.addEventListener("change", optionChanged);
 		elements.pageActionMiddleClickCommandInput.addEventListener("change", optionChanged);
-		elements.sitesInput.onSiteHostnameChanged = onSiteHostnameChanged;
+		elements.sitesInput.onSiteNameChanged = onSiteNameChanged;
 		elements.sitesInput.onSiteKeyChanged = onSiteKeyChanged;
 		elements.sitesInput.onSiteRemoved = onSiteRemoved;
 		elements.importInput.addEventListener("click", onImport);
@@ -164,11 +164,11 @@ const BackgroundPort = (() => {
 		elements.exportInput.addEventListener("click", onExport);
 	}
 
-	function onSiteHostnameChanged(oldHostname, newHostname) {
-		const site = sites[oldHostname];
-		delete sites[oldHostname];
-		sites[newHostname] = site;
-		BackgroundPort.notify({ command: "siteHostnameChanged", args: [ oldHostname, newHostname ] });
+	function onSiteNameChanged(oldName, newName) {
+		const site = sites[oldName];
+		delete sites[oldName];
+		sites[newName] = site;
+		BackgroundPort.notify({ command: "siteNameChanged", args: [ oldName, newName ] });
 	}
 
 	function onSiteKeyChanged(hostname, key, value) {
@@ -279,31 +279,32 @@ function SitesInput(sites) {
 
 	for (const hostname of Object.keys(sites).sort()) {
 		const siteDetails = new SiteDetails(hostname, sites[hostname]);
-		siteDetails.onSiteHostnameChanged = site_onSiteHostnameChanged;
+		siteDetails.onSiteNameChanged = site_onSiteNameChanged;
 		siteDetails.onSiteKeyChanged = site_onSiteKeyChanged;
 		siteDetails.onSiteRemoved = site_onSiteRemoved;
 		details.appendChild(siteDetails.element);
 	}
 
-	let onSiteHostnameChanged, onSiteKeyChanged, onSiteRemoved;
+	let onSiteNameChanged, onSiteKeyChanged, onSiteRemoved;
 
 	function addSiteButton_onClick(event) {
-		const exampleHostname = generateNextExampleHostname();
+		const exampleName = generateNextExampleName();
 		const newSite = { links: "" };
-		sites[exampleHostname] = newSite;
+		sites[exampleName] = newSite;
 
-		const siteDetails = new SiteDetails(exampleHostname, newSite);
-		siteDetails.onSiteHostnameChanged = site_onSiteHostnameChanged;
+		const siteDetails = new SiteDetails(exampleName, newSite);
+		siteDetails.onSiteNameChanged = site_onSiteNameChanged;
 		siteDetails.onSiteKeyChanged = site_onSiteKeyChanged;
 		siteDetails.onSiteRemoved = site_onSiteRemoved;
 		addSiteButton.insertAdjacentElement("afterend", siteDetails.element);
 
-		site_onSiteKeyChanged(exampleHostname, "links", "");
+		site_onSiteKeyChanged(exampleName, "hostname", "www.example.com");
+		site_onSiteKeyChanged(exampleName, "links", "");
 	}
 
-	function site_onSiteHostnameChanged(oldHostname, newHostname) {
-		if (onSiteHostnameChanged instanceof Function) {
-			onSiteHostnameChanged(oldHostname, newHostname);
+	function site_onSiteNameChanged(oldName, newName) {
+		if (onSiteNameChanged instanceof Function) {
+			onSiteNameChanged(oldName, newName);
 		}
 	}
 
@@ -325,34 +326,34 @@ function SitesInput(sites) {
 		return sites.hasOwnProperty(hostname);
 	}
 
-	function generateNextExampleHostname() {
+	function generateNextExampleName() {
 		if (!sites.hasOwnProperty("www.example.com")) {
 			return "www.example.com";
 		}
 
 		let counter = 1;
 
-		while (sites.hasOwnProperty(counter + ".example.com")) {
+		while (sites.hasOwnProperty("www.example.com - " + counter)) {
 			counter++;
 		}
 
-		return counter + ".example.com";
+		return "www.example.com - " + counter;
 	}
 
 	return {
 		element: details,
-		set onSiteHostnameChanged(callback) { onSiteHostnameChanged = callback },
+		set onSiteNameChanged(callback) { onSiteNameChanged = callback },
 		set onSiteKeyChanged(callback) { onSiteKeyChanged = callback },
 		set onSiteRemoved(callback) { onSiteRemoved = callback },
 		contains: contains,
 	};
 }
 
-function SiteDetails(hostname, options) {
+function SiteDetails(name, options) {
 	const details = document.createElement("details");
 
 	const summary = document.createElement("summary");
-	summary.appendChild(document.createTextNode(hostname));
+	summary.appendChild(document.createTextNode(name));
 	details.appendChild(summary);
 
 	const removeButton = new RemoveButton("Remove");
@@ -362,7 +363,11 @@ function SiteDetails(hostname, options) {
 	const detailsWrapper = document.createElement("div");
 	details.appendChild(detailsWrapper);
 
-	const hostnameInput = new HostnameInput("Hostname", hostname);
+	const nameInput = new NameInput("Name", name);
+	nameInput.onChanged = name_onChanged;
+	detailsWrapper.appendChild(nameInput.element);
+
+	const hostnameInput = new TextInput("Hostname", options.hostname);
 	hostnameInput.onChanged = hostname_onChanged;
 	detailsWrapper.appendChild(hostnameInput.element);
 
@@ -384,30 +389,34 @@ function SiteDetails(hostname, options) {
 	styleInput.addEventListener("change", style_onChanged);
 	detailsWrapper.appendChild(styleInput);
 
-	let onSiteRemoved, onSiteHostnameChanged, onSiteKeyChanged;
+	let onSiteRemoved, onSiteNameChanged, onSiteKeyChanged;
 
-	function hostname_onChanged(newHostname) {
-		if (onSiteHostnameChanged instanceof Function) {
-			onSiteHostnameChanged(hostname, newHostname);
+	function name_onChanged(newName) {
+		if (onSiteNameChanged instanceof Function) {
+			onSiteNameChanged(name, newName);
 		}
-		summary.firstChild.nodeValue = newHostname;
-		hostname = newHostname;
+		summary.firstChild.nodeValue = newName;
+		name = newName;
+	}
+
+	function hostname_onChanged(newValue) {
+		dispatchDetailsChanged(name, "hostname", newValue);
 	}
 
 	function link_onChanged(newValue) {
-		dispatchDetailsChanged(hostname, "links", newValue);
+		dispatchDetailsChanged(name, "links", newValue);
 	}
 
 	function parent_onChanged(newValue) {
-		dispatchDetailsChanged(hostname, "parent", newValue);
+		dispatchDetailsChanged(name, "parent", newValue);
 	}
 
 	function parentSiblings_onChanged(newValue) {
-		dispatchDetailsChanged(hostname, "parentSiblings", newValue);
+		dispatchDetailsChanged(name, "parentSiblings", newValue);
 	}
 
 	function style_onChanged() {
-		dispatchDetailsChanged(hostname, "style", styleInput.value);
+		dispatchDetailsChanged(name, "style", styleInput.value);
 	}
 
 	function dispatchDetailsChanged() {
@@ -418,13 +427,13 @@ function SiteDetails(hostname, options) {
 
 	function removeButton_onClick() {
 		if (onSiteRemoved instanceof Function) {
-			onSiteRemoved(hostname, details);
+			onSiteRemoved(name, details);
 		}
 	}
 
 	return {
 		element: details,
-		set onSiteHostnameChanged(callback) { onSiteHostnameChanged = callback },
+		set onSiteNameChanged(callback) { onSiteNameChanged = callback },
 		set onSiteKeyChanged(callback) { onSiteKeyChanged = callback },
 		set onSiteRemoved(callback) { onSiteRemoved = callback },
 	};
@@ -473,33 +482,33 @@ function RemoveButton(caption, timeout = 3000) {
 	};
 }
 
-function HostnameInput(caption, hostname) {
+function NameInput(caption, hostname) {
 	const textInput = new TextInput(caption, hostname);
 	textInput.onChanged = onTextInputChanged;
 
 	let onChanged;
 
-	function onTextInputChanged(newHostname) {
-		if (newHostname == hostname) {
+	function onTextInputChanged(newName) {
+		if (newName == hostname) {
 			textInput.error = "";
 			return;
 		}
 
-		if (newHostname.length == 0) {
+		if (newName.length == 0) {
 			textInput.error = "Hostname cannot be empty.";
 			return;
 		}
 
-		if (elements.sitesInput.contains(newHostname)) {
+		if (elements.sitesInput.contains(newName)) {
 			textInput.error = "Hostname already exists.";
 			return;
 		}
 
-		hostname = newHostname;
+		hostname = newName;
 		textInput.error = "";
 
 		if (onChanged instanceof Function) {
-			onChanged(newHostname);
+			onChanged(newName);
 		}
 	}
 
