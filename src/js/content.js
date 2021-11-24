@@ -99,8 +99,8 @@ const BackgroundPort = (() => {
 
 	BackgroundPort.connect();
 
-	const site = await BackgroundPort.postMessage({ command: 'getSiteConfig' });
-	if (!site.isSupported) {
+	const config = await BackgroundPort.postMessage({ command: 'getSiteConfig' });
+	if (!config.isSupported) {
 		BackgroundPort.disconnect();
 		alert("This site is not supported.");
 		return;
@@ -111,22 +111,27 @@ const BackgroundPort = (() => {
 	init();
 
 	function init() {
-		const links = document.querySelectorAll(site.links);
-		const checkSeenPromises = [];
+		const queries = [ ];
 
-		for (const link of links) {
-			linkAdded(link);
+		for (const site of Object.values(config.sites)) {
+			const links = document.querySelectorAll(site.links);
+
+			for (const link of links) {
+				linkAdded(site, link);
+			}
+
+			queries.push({ query: site.links, callback: linkAdded.bind(this, site) });
 		}
 
-		const observer = new PageObserver({ query: site.links, callback: linkAdded });
+		const observer = new PageObserver(...queries);
 		addStyle();
 
 		BackgroundPort.addListener(onCommand);
 		window.addEventListener("unload", notifyUnload);
 	}
 
-	function linkAdded(element) {
-		var link = new Link(element);
+	function linkAdded(site, element) {
+		var link = new Link(site, element);
 		link.checkSeen();
 		links.push(link);
 	}
@@ -179,7 +184,7 @@ const BackgroundPort = (() => {
 	}
 
 	function onOptionChanged(option, value) {
-		site.options[option] = value;
+		config.options[option] = value;
 
 		switch (option) {
 			case "activateAutomatically":
@@ -206,7 +211,7 @@ const BackgroundPort = (() => {
 
 	/* Mark seen urls from other tabs. */
 	function onSeenUrl(url, hostname) {
-		if (site.options.trackSeparately && hostname != site.hostname) {
+		if (config.options.trackSeparately && hostname != site.hostname) {
 			return;
 		}
 
@@ -237,7 +242,7 @@ const BackgroundPort = (() => {
 	}
 
 	function notifyUnload() {
-		const newUrls = site.options.markAllSeenOnUnload ? links.filter(l => l.isNew).map(l => l.id) : [ ];
+		const newUrls = config.options.markAllSeenOnUnload ? links.filter(l => l.isNew).map(l => l.id) : [ ];
 		BackgroundPort.postMessage({ command: "unload", args: [ newUrls ], });
 	}
 
@@ -248,8 +253,11 @@ const BackgroundPort = (() => {
 		}
 
 		const style = createStyleElement();
-		style.appendChild(document.createTextNode(site.options.globalStyle));
-		style.appendChild(document.createTextNode(site.style));
+		style.appendChild(document.createTextNode(config.options.globalStyle));
+
+		for (const site of Object.values(config.sites).filter(s => s.style != null && s.style.length > 0)) {
+			style.appendChild(document.createTextNode(site.style));
+		}
 
 		requestAnimationFrame(() => {
 			document.head.appendChild(style);
@@ -264,7 +272,7 @@ const BackgroundPort = (() => {
 		return style;
 	}
 
-	function Link(element) {
+	function Link(site, element) {
 		let visited;
 		const listeners = [ ];
 		const id = site.hasOwnProperty("idKey") && site.idKey.length > 0 ? element[site.idKey] : element.href;
@@ -279,7 +287,7 @@ const BackgroundPort = (() => {
 			.then(result => {
 				visited = result;
 				if (visited) {
-					if (site.options.hideSeenLinksAutomatically) {
+					if (config.options.hideSeenLinksAutomatically) {
 						addClass("seen", "hidden");
 					}
 					else {
@@ -357,11 +365,11 @@ const BackgroundPort = (() => {
 				return;
 			}
 
-			const event = site.options.markSeenOn == "click" ? "mouseup" : "mouseover";
+			const event = config.options.markSeenOn == "click" ? "mouseup" : "mouseover";
 			element.addEventListener(event, setSeen);
 			listeners.push({ element: element, event: event, callback: setSeen, });
 
-			if (site.options.markSeenOnFocus) {
+			if (config.options.markSeenOnFocus) {
 				element.addEventListener("focusin", setSeen);
 				listeners.push({ element: element, event: "focusin", callback: setSeen, });
 			}

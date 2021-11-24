@@ -77,16 +77,19 @@ const Config = (() => {
 	}
 
 	function getSiteConfig(hostname) {
+		const result = { isSupported: false, options, sites: { } };
 		const hostnameTokens = hostname.split('.');
-		for (const site of Object.values(sites)) {
+
+		for (const [name, site] of Object.entries(sites)) {
 			const siteTokens = site.hostname.split('.');
 
 			if (tokensMatch(siteTokens, hostnameTokens)) {
-				return { isSupported: true, hostname: site.hostname, ...site, options: options };
+				result.isSupported = true;
+				result.sites[name] = site;
 			}
 		}
 
-		return { isSupported: false };
+		return result;
 	}
 
 	function checkSeen(url, hostname) {
