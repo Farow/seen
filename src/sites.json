@@ -9,7 +9,8 @@
 		"hostname": "news.ycombinator.com",
 		"links": ".athing.comtr",
 		"parent": ".athing",
-		"idKey": "id"
+		"idKey": "id",
+		"style": ".comtr.seen { opacity: 1; }"
 	},
 	"Lobsters": {
 		"hostname": "lobste.rs",
