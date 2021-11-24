@@ -5,6 +5,12 @@
 		"parent": ".athing",
 		"parentSiblings": 2
 	},
+	"Hacker News - comments": {
+		"hostname": "news.ycombinator.com",
+		"links": ".athing.comtr",
+		"parent": ".athing",
+		"idKey": "id"
+	},
 	"Lobsters": {
 		"hostname": "lobste.rs",
 		"links": ".u-url",
