@@ -29,7 +29,7 @@
 
   "optional_permissions": ["*://*/*", "history"],
   "background": {
-    "scripts": ["js/history.js", "js/config.js", "js/background.js"]
+    "page": "background.html"
   },
   "options_ui": {
     "page": "options.html",
