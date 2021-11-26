@@ -60,7 +60,11 @@ const BackgroundPort = (() => {
 				case "importSuccess":
 					// TODO: handle more gracefully.
 					alert("Import succeded.");
-					location.reload();
+
+					// Bypass cache: https://developer.mozilla.org/en-US/docs/Web/API/Location/reload#location.reload_has_no_parameter
+					// When reloading a page, values of inputs can be cached, such as the checked state of a checkbox input.
+					// This leads to inputs displaying an incorrect value.
+					location.reload(true);
 					break;
 
 				default:
