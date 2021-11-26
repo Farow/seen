@@ -42,5 +42,13 @@
     }
   },
 
-  "permissions": ["activeTab", "menus", "storage"]
+  "permissions": ["activeTab", "menus", "storage"],
+
+  "protocol_handlers": [
+    {
+      "protocol": "ext+seen",
+      "name": "Seen extension",
+      "uriTemplate": "quick-import.html?data=%s"
+    }
+  ]
 }

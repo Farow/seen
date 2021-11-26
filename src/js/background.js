@@ -98,6 +98,7 @@ function init(result) {
 	browser.menus.onClicked.addListener(onMenuClick);
 	browser.runtime.onConnect.addListener(portConnected);
 	browser.pageAction.onClicked.addListener(actionClick);
+	browser.runtime.onMessage.addListener(onMessage);
 }
 
 function registerContentScript(origin) {
@@ -177,6 +178,29 @@ function onOptionChanged(option, value) {
 
 	Config.options[option] = value;
 	ContentScriptPorts.notifyAll({ command: "optionChanged", args: [ option, value], });
+}
+
+function onMessage(message, sender, sendResponse) {
+	if (!message.hasOwnProperty("command")) {
+		console.warn("Unhandled message:", message);
+		return Promise.reject();
+	}
+
+	const args = message.hasOwnProperty("args") ? message.args : [ ];
+
+	switch (message.command) {
+		case "importSiteRule":
+			return onImportSiteRule(...args);
+			break;
+
+		default:
+			console.warn("Unhandled command:", message.command);
+			return Promise.reject();
+	}
+}
+
+function onImportSiteRule(data, overwrite) {
+	return Config.importSiteRules(data, overwrite);
 }
 
 function actionClick(tab, clickData) {

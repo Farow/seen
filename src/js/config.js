@@ -69,6 +69,29 @@ const Config = (() => {
 		}
 	}
 
+	function importSiteRules(data, overwrite) {
+		try {
+			for (const name of Object.keys(data)) {
+				if (sites.hasOwnProperty(name) && !overwrite) {
+					continue;
+				}
+
+				if (!(data[name] instanceof Object)) {
+					throw new Error("Invalid data.");
+				}
+
+				sites[name] = data[name];
+			}
+
+			return browser.storage.sync.set({ sites: sites });
+		}
+		catch (error) {
+			console.error(error);
+			return Promise.reject(error);
+		}
+
+	}
+
 	function ready() {
 		if (readyPromise == null) {
 			return init();
@@ -205,6 +228,7 @@ const Config = (() => {
 		ready: ready,
 		reset: reset,
 		importJson: importJson,
+		importSiteRules: importSiteRules,
 		getSiteConfig: getSiteConfig,
 		checkSeen: checkSeen,
 		clearHistory: clearHistory,

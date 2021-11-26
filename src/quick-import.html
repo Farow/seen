@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<style>
+			body {
+				background: #EBE6E0;
+				color: hsla(30, 100%, 10%, 1);
+			}
+
+			html {
+				display: flex;
+				justify-content: center;
+			}
+			body {
+				display: flex;
+				flex-direction: column;
+			}
+
+			textarea {
+				display: block;
+				min-width: 30em;
+				min-height: 10em;
+			}
+
+			#controls {
+				display: flex;
+				justify-content: flex-end;
+				gap: 5px;
+			}
+
+			#import {
+				margin-right: auto;
+			}
+
+			#disclaimer {
+				position: fixed;
+				bottom: 1em;
+				right: 1em;
+				max-width: 40em;
+			}
+
+			#disclaimer, #disclaimer a {
+				color: hsla(30, 20%, 50%, 1);
+			}
+		</style>
+	</head>
+
+	<body>
+		<label>Import site rule(s):<textarea id="importData"></textarea></label>
+		<label><input id="overwrite" type="checkbox">Overwrite existing data</label>
+		<div id="controls">
+			<button id="import">Import</button>
+			<button id="back">Go back</button>
+			<button id="close">Close</button>
+		</div>
+		<div id="disclaimer">This page belongs to the seen extension. To modify the behavior of this page, edit the "ext+seen" entry in the "Files and Applications" section of Firefox's general settings. <br/> For more information see: <a href="https://support.mozilla.org/en-US/kb/change-firefox-behavior-when-open-file">Change what Firefox does when you click on or download a file</a>.</div>
+		<script src="js/quick-import.js"></script>
+	</body>
+</html>
