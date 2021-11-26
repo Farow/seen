@@ -368,6 +368,10 @@ function OptionsPort(port, optionChangedListener) {
 				onOptionChanged(...args);
 				break;
 
+			case "reset":
+				onReset(...args);
+				break;
+
 			case "siteNameChanged":
 				onSiteNameChanged(...args);
 				break;
@@ -395,6 +399,11 @@ function OptionsPort(port, optionChangedListener) {
 		if (optionChangedListener instanceof Function) {
 			optionChangedListener(option, value);
 		}
+	}
+
+	function onReset() {
+		Config.reset()
+		.then(result => port.postMessage({ command: "resetComplete" }));
 	}
 
 	function onSiteNameChanged(oldName, newName) {

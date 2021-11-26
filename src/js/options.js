@@ -67,6 +67,11 @@ const BackgroundPort = (() => {
 					location.reload(true);
 					break;
 
+				case "resetComplete":
+					alert("Reset complete.");
+					location.reload(true);
+					break;
+
 				default:
 					console.warn("Unhandled command:", message.command);
 			}
@@ -103,6 +108,7 @@ const BackgroundPort = (() => {
 
 (async () => {
 	const { availableCommands, options, sites } = await BackgroundPort.getConfig();
+	elements.resetInput = new RemoveButton("Reset");
 	elements.sitesInput = new SitesInput(sites);
 
 	restoreOptions();
@@ -143,6 +149,7 @@ const BackgroundPort = (() => {
 		}
 
 		elements.globalStyleInput.value = options.globalStyle;
+		elements.importHelperInput.parentElement.insertBefore(elements.resetInput.element, elements.importHelperInput);
 		document.body.insertBefore(elements.sitesInput.element, elements.exportInput.parentElement);
 	}
 
@@ -163,6 +170,7 @@ const BackgroundPort = (() => {
 		elements.sitesInput.onSiteNameChanged = onSiteNameChanged;
 		elements.sitesInput.onSiteKeyChanged = onSiteKeyChanged;
 		elements.sitesInput.onSiteRemoved = onSiteRemoved;
+		elements.resetInput.onClick = onReset;
 		elements.importInput.addEventListener("click", onImport);
 		elements.importHelperInput.addEventListener("change", onImportFile);
 		elements.exportInput.addEventListener("click", onExport);
@@ -183,6 +191,10 @@ const BackgroundPort = (() => {
 	function onSiteRemoved(hostname) {
 		delete sites[hostname];
 		BackgroundPort.notify({ command: "siteRemoved", args: [ hostname ] });
+	}
+
+	function onReset() {
+		BackgroundPort.notify({ command: "reset" });
 	}
 
 	function onImport() {

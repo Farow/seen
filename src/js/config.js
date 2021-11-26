@@ -19,7 +19,7 @@
 const Config = (() => {
 	/* Use Object.assign for these, since we return them. */
 	const sites = { };
-	const options = {
+	const defaultOptions = {
 		activateAutomatically: true,
 		hideSeenLinksAutomatically: false,
 		historyProvider: "indexedDB",
@@ -31,6 +31,7 @@ const Config = (() => {
 		pageActionCommand: "toggleVisibility",
 		pageActionMiddleClickCommand: "openOptionsPage",
 	};
+	const options = { ...defaultOptions };
 
 	let readyPromise;
 
@@ -74,6 +75,25 @@ const Config = (() => {
 		}
 
 		return readyPromise;
+	}
+
+	async function reset() {
+		const defaultSites = await fetch(browser.runtime.getURL("sites.json"))
+		.then(response => response.json())
+		.catch(error => { console.error("Could not load sites.json: ", error); return { }; });
+
+		for (const key of Object.keys(options)) {
+			delete options[key];
+		}
+
+		for (const key of Object.keys(sites)) {
+			delete sites[key];
+		}
+
+		Object.assign(options, defaultOptions);
+		Object.assign(sites, defaultSites)
+
+		return browser.storage.sync.set({ sites, options });
 	}
 
 	function getSiteConfig(hostname) {
@@ -183,6 +203,7 @@ const Config = (() => {
 
 		/* Methods */
 		ready: ready,
+		reset: reset,
 		importJson: importJson,
 		getSiteConfig: getSiteConfig,
 		checkSeen: checkSeen,
