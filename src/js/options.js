@@ -297,9 +297,6 @@ function SitesInput(sites) {
 		siteDetails.onSiteKeyChanged = site_onSiteKeyChanged;
 		siteDetails.onSiteRemoved = site_onSiteRemoved;
 		addSiteButton.insertAdjacentElement("afterend", siteDetails.element);
-
-		site_onSiteKeyChanged(exampleName, "hostname", "www.example.com");
-		site_onSiteKeyChanged(exampleName, "links", "");
 	}
 
 	function site_onSiteNameChanged(oldName, newName) {

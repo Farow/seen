@@ -398,7 +398,8 @@ function OptionsPort(port, optionChangedListener) {
 	}
 
 	function onSiteNameChanged(oldName, newName) {
-		const site = Config.sites[oldName];
+		/* Config.sites[oldName] is undefined when an example rule gets renamed. */
+		const site = Config.sites[oldName] ?? { };
 		delete Config.sites[oldName];
 		Config.sites[newName] = site;
 	}
