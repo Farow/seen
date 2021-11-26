@@ -498,12 +498,12 @@ function NameInput(caption, hostname) {
 		}
 
 		if (newName.length == 0) {
-			textInput.error = "Hostname cannot be empty.";
+			textInput.error = "Name cannot be empty.";
 			return;
 		}
 
 		if (elements.sitesInput.contains(newName)) {
-			textInput.error = "Hostname already exists.";
+			textInput.error = "Name already exists.";
 			return;
 		}
 
