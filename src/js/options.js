@@ -289,7 +289,7 @@ function SitesInput(sites) {
 
 	function addSiteButton_onClick(event) {
 		const exampleName = generateNextExampleName();
-		const newSite = { links: "" };
+		const newSite = { links: "", hostname: "www.example.com" };
 		sites[exampleName] = newSite;
 
 		const siteDetails = new SiteDetails(exampleName, newSite);
@@ -331,7 +331,7 @@ function SitesInput(sites) {
 			return "www.example.com";
 		}
 
-		let counter = 1;
+		let counter = 2;
 
 		while (sites.hasOwnProperty("www.example.com - " + counter)) {
 			counter++;
@@ -387,11 +387,9 @@ function SiteDetails(name, options) {
 	idKeyInput.onChanged = idKey_onChanged;
 	detailsWrapper.appendChild(idKeyInput.element);
 
-	const styleInput = document.createElement("textarea");
-	styleInput.value = options.style ?? "";
-	styleInput.classList.add("browser-style");
-	styleInput.addEventListener("change", style_onChanged);
-	detailsWrapper.appendChild(styleInput);
+	const styleInput = new TextAreaInput("Style", options.style ?? "");
+	styleInput.onChanged = style_onChanged;
+	detailsWrapper.appendChild(styleInput.element);
 
 	let onSiteRemoved, onSiteNameChanged, onSiteKeyChanged;
 
@@ -419,12 +417,12 @@ function SiteDetails(name, options) {
 		dispatchDetailsChanged(name, "parentSiblings", newValue);
 	}
 
-	function style_onChanged() {
-		dispatchDetailsChanged(name, "style", styleInput.value);
-	}
-
 	function idKey_onChanged(newValue) {
 		dispatchDetailsChanged(name, "idKey", newValue);
+	}
+
+	function style_onChanged(newValue) {
+		dispatchDetailsChanged(name, "style", newValue);
 	}
 
 	function dispatchDetailsChanged() {
@@ -553,6 +551,32 @@ function TextInput(caption, value) {
 		set onChanged(callback) { onChanged = callback },
 		set value(newValue) { input.value = newValue },
 	};
+}
+
+function TextAreaInput(caption, value) {
+	const label = document.createElement("label");
+	label.classList.add("browser-style");
+	label.appendChild(document.createTextNode(caption));
+
+	const textArea = document.createElement("textarea");
+	textArea.value = value;
+	textArea.classList.add("browser-style");
+	textArea.addEventListener("change", onChange);
+	label.appendChild(textArea);
+
+	let onChanged;
+
+	function onChange(event) {
+		if (onChanged instanceof Function) {
+			onChanged(event.target.value);
+		}
+	}
+
+	return {
+		element: label,
+		set onChanged(callback) { onChanged = callback },
+	}
+
 }
 
 function ParentSiblingsInput(caption, value) {
