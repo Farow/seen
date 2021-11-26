@@ -268,7 +268,7 @@ function SitesInput(sites) {
 	const details = document.createElement("details");
 	const summary = document.createElement("summary");
 
-	summary.appendChild(document.createTextNode("Sites"));
+	summary.appendChild(document.createTextNode("Site rules"));
 	details.appendChild(summary);
 
 	const addSiteButton = document.createElement("button");
