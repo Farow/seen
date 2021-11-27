@@ -113,6 +113,8 @@ const History = (() => {
 				.setNew(url, hostname)
 				.then((result) => { raiseEvent(url, hostname); return result });
 		}
+
+		return Promise.resolve(false);
 	}
 
 	function setSeen (url, hostname) {
@@ -126,7 +128,7 @@ const History = (() => {
 				.then((result) => { raiseEvent(url, hostname); return result });
 		}
 
-		return false;
+		return Promise.resolve(false);
 	}
 
 	return {
@@ -415,6 +417,7 @@ History.addProvider("browser", (() => {
 	return {
 		init: init,
 		ready: ready,
-		checkSeen: checkSeen
+		addListener: addListener,
+		checkSeen: checkSeen,
 	};
 })());
