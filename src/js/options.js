@@ -231,11 +231,11 @@ const BackgroundPort = (() => {
 		.then(granted => {
 			if (granted) {
 				document.getElementById("useBrowserHistory").checked = true;
-				saveOption("historyProvider", "browser");
+				BackgroundPort.notify({ command: "optionChanged", args: [ "historyProvider", "browser" ] });
 			}
 			else {
 				document.getElementById("useExtensionHistory").checked = true;
-				saveOption("historyProvider", "indexedDB");
+				BackgroundPort.notify({ command: "optionChanged", args: [ "historyProvider", "indexedDB" ] });
 			}
 		});
 	}
