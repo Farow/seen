@@ -112,9 +112,7 @@ const History = (() => {
 		}
 
 		if (provider.setNew instanceof Function) {
-			return provider
-				.setNew(url, hostname)
-				.then((result) => { raiseEvent(url, hostname); return result });
+			return provider.setNew(url, hostname);
 		}
 
 		return Promise.reject("setNew is not supported by the current history provider.");
