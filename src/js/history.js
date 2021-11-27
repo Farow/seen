@@ -60,17 +60,18 @@ const History = (() => {
 			throw new Error(`Unknown history provider: ${ name }`);
 		}
 
-		if (provider != null && provider.removeListener instanceof Function) {
-			provider.removeListener(raiseEvent);
+		if (provider != null && provider.dispose instanceof Function) {
+			provider.dispose();
 		}
 
 		provider = providers[name];
+		provider.onVisited = raiseEvent;
 
-		if (provider.addListener instanceof Function) {
-			provider.addListener(raiseEvent);
+		if (provider.initialize instanceof Function) {
+			return provider.initialize();
 		}
 
-		return provider.ready();
+		return Promise.resolve(true);
 	}
 
 	function addListener(callback) {
@@ -154,37 +155,31 @@ History.addProvider("indexedDB", (function () {
 	/*
 		Public methods
 	*/
-	function init() {
-		if (readyPromise != null) {
-			throw new Error("init() has already been called.");
-		}
+	function initialize() {
+		return new Promise((resolve, reject) => {
+			const request = indexedDB.open("seen");
 
-		let readyResolve, readyReject;
-		readyPromise = new Promise((resolve, reject) => [ readyResolve, readyReject ] = [ resolve, reject ]);
+			request.addEventListener("upgradeneeded", upgradeDatabase);
 
-		const request = indexedDB.open("seen");
+			request.addEventListener("success", (event) => {
+				db = event.target.result;
+				resolve();
+			});
 
-		request.addEventListener("upgradeneeded", upgradeDatabase);
-
-		request.addEventListener("success", (event) => {
-			db = event.target.result;
-			readyResolve();
+			request.addEventListener("error", (event) => {
+				console.error("Error while opening the database: ", event.target.error);
+				reject(event.target.error);
+			});
 		});
-
-		request.addEventListener("error", (event) => {
-			console.error("Error while opening the database: ", event.target.error);
-			readyReject(event.target.error);
-		});
-
-		return readyPromise;
 	}
 
-	function ready() {
-		if (readyPromise == null) {
-			return init();
+	function dispose() {
+		if (db != null) {
+			db.close();
+			db = null;
 		}
 
-		return readyPromise;
+		return Promise.resolve(true);
 	}
 
 	function checkSeen(url, hostname, hostnameSpecific) {
@@ -298,7 +293,10 @@ History.addProvider("indexedDB", (function () {
 			const objectStore = transaction.objectStore("seen");
 			const request = objectStore.put(record, key);
 
-			request.addEventListener("success", (event) => resolve(event.target.result));
+			request.addEventListener("success", (event) => {
+				resolve(event.target.result);
+				history_onVisited(getKeyResult.url, getKeyResult.hostname);
+			});
 
 			request.addEventListener("error", (event) => {
 				console.error("Error adding record: ", record, event.target.error);
@@ -322,6 +320,14 @@ History.addProvider("indexedDB", (function () {
 				reject(event.target.error);
 			});
 		});
+	}
+
+	let onVisited;
+
+	function history_onVisited(url, hostname) {
+		if (onVisited instanceof Function) {
+			onVisited(url);
+		}
 	}
 
 	class SimpleTransaction {
@@ -356,56 +362,29 @@ History.addProvider("indexedDB", (function () {
 	}
 
 	return {
-		init: init,
-		ready: ready,
-		checkSeen: checkSeen,
-		clearHistory: clearHistory,
-		setNew: setNew,
-		setSeen: setSeen,
+		set onVisited(callback) { onVisited = callback },
+		initialize,
+		dispose,
+		checkSeen,
+		clearHistory,
+		setNew,
+		setSeen,
 	};
 })());
 
 History.addProvider("browser", (() => {
-	const seenEvent = new SeenEvent();
-	let readyPromise = null;
-
-	/*
-		Public methods
-	*/
-	function init() {
-		if (readyPromise != null) {
-			throw new Error("init() has already been called.");
-		}
-
-		readyPromise = new Promise((resolve, reject) => {
-			resolve();
-		});
-
-		return readyPromise;
+	function initialize() {
+		browser.history.onVisited.addListener(history_onVisited);
+		return Promise.resolve(true);
 	}
 
-	function ready() {
-		if (readyPromise == null) {
-			return init();
-		}
-
-		return readyPromise;
+	function dispose() {
+		browser.history.onVisited.removeListener(history_onVisited);
+		return Promise.resolve(true);
 	}
 
-	function addListener(callback) {
-		seenEvent.addListener(callback);
-
-		if (seenEvent.subscribers == 1) {
-			browser.history.onVisited.addListener(onVisited);
-		}
-	}
-
-	function removeListener(callback) {
-		seenEvent.removeListener(callback);
-
-		if (seenEvent.subscribers == 0) {
-			browser.history.onVisited.removeListener(onVisited);
-		}
+	function checkSeen(url) {
+		return browser.history.search({ text: url, maxResults: 1 }).then(result => result.length > 0);
 	}
 
 	function setNew(url, hostname) {
@@ -416,20 +395,20 @@ History.addProvider("browser", (() => {
 		return browser.history.addUrl({ url });
 	}
 
-	function checkSeen(url) {
-		return browser.history.search({ text: url, maxResults: 1 }).then(result => result.length > 0);
-	}
+	let onVisited;
 
-	function onVisited(historyItem) {
-		seenEvent.raiseEvent(historyItem.url);
+	function history_onVisited(historyItem) {
+		if (onVisited instanceof Function) {
+			onVisited(historyItem.url);
+		}
 	}
 
 	return {
-		init: init,
-		ready: ready,
-		addListener: addListener,
-		checkSeen: checkSeen,
-		setNew: setNew,
-		setSeen: setSeen,
+		set onVisited(callback) { onVisited = callback },
+		initialize,
+		dispose,
+		checkSeen,
+		setNew,
+		setSeen,
 	};
 })());
