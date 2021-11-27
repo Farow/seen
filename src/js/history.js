@@ -406,6 +406,14 @@ History.addProvider("browser", (() => {
 		}
 	}
 
+	function setNew(url, hostname) {
+		return browser.history.deleteUrl({ url });
+	}
+
+	function setSeen(url, hostname) {
+		return browser.history.addUrl({ url });
+	}
+
 	function checkSeen(url) {
 		return browser.history.search({ text: url, maxResults: 1 }).then(result => result.length > 0);
 	}
@@ -419,5 +427,7 @@ History.addProvider("browser", (() => {
 		ready: ready,
 		addListener: addListener,
 		checkSeen: checkSeen,
+		setNew: setNew,
+		setSeen: setSeen,
 	};
 })());

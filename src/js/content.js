@@ -361,10 +361,6 @@ const BackgroundPort = (() => {
 		}
 
 		function addEventListener() {
-			if (site.historyProvider == "browser") {
-				return;
-			}
-
 			const event = config.options.markSeenOn == "click" ? "mouseup" : "mouseover";
 			element.addEventListener(event, setSeen);
 			listeners.push({ element: element, event: event, callback: setSeen, });
