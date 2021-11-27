@@ -101,6 +101,8 @@ const History = (() => {
 		if (provider.clearHistory instanceof Function) {
 			return provider.clearHistory();
 		}
+
+		return Promise.reject("clearHistory is not supported by the current history provider.");
 	}
 
 	function setNew(url, hostname) {
@@ -114,7 +116,7 @@ const History = (() => {
 				.then((result) => { raiseEvent(url, hostname); return result });
 		}
 
-		return Promise.resolve(false);
+		return Promise.reject("setNew is not supported by the current history provider.");
 	}
 
 	function setSeen (url, hostname) {
@@ -128,7 +130,7 @@ const History = (() => {
 				.then((result) => { raiseEvent(url, hostname); return result });
 		}
 
-		return Promise.resolve(false);
+		return Promise.reject("setSeen is not supported by the current history provider.");
 	}
 
 	return {
