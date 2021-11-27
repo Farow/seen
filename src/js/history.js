@@ -146,7 +146,7 @@ const History = (() => {
 })();
 
 History.addProvider("indexedDB", (function () {
-	const databaseName = "seen";
+	const seenTable = "seen";
 	let db = null;
 	let readyPromise = null;
 
@@ -198,7 +198,7 @@ History.addProvider("indexedDB", (function () {
 
 		return new Promise((resolve, reject) => {
 			const simpleTransaction = new SimpleTransaction();
-			const objectStore = simpleTransaction.transaction.objectStore("seen");
+			const objectStore = simpleTransaction.transaction.objectStore(seenTable);
 			const request = objectStore.clear();
 
 			request.addEventListener("success", (event) => resolve(event.target.result));
@@ -240,7 +240,7 @@ History.addProvider("indexedDB", (function () {
 		const db = event.target.result;
 
 		if (event.oldVersion < 1) {
-			const objectStore = db.createObjectStore("seen", { autoIncrement : true });
+			const objectStore = db.createObjectStore(seenTable, { autoIncrement : true });
 
 			objectStore.createIndex("url", "url", { unique: false });
 			objectStore.createIndex("hostname", "hostname", { unique: false });
@@ -258,7 +258,7 @@ History.addProvider("indexedDB", (function () {
 			}
 
 			const transaction = getKeyResult.event.target.transaction;
-			const objectStore = transaction.objectStore("seen");
+			const objectStore = transaction.objectStore(seenTable);
 			const record = { url: getKeyResult.url, hostname: getKeyResult.hostname, timestamp: Date.now() };
 
 			/* Get record and resolve/reject. */
@@ -288,7 +288,7 @@ History.addProvider("indexedDB", (function () {
 			const key = getKeyResult.event.target.result;
 			const record = { url: getKeyResult.url, hostname: getKeyResult.hostname, timestamp: Date.now() };
 
-			const objectStore = transaction.objectStore("seen");
+			const objectStore = transaction.objectStore(seenTable);
 			const request = objectStore.put(record, key);
 
 			request.addEventListener("success", (event) => {
@@ -308,7 +308,7 @@ History.addProvider("indexedDB", (function () {
 			const transaction = getKeyResult.event.target.transaction;
 			const key = getKeyResult.event.target.result;
 
-			const objectStore = transaction.objectStore("seen");
+			const objectStore = transaction.objectStore(seenTable);
 			const request = objectStore.delete(key);
 
 			request.addEventListener("success", (event) => resolve(event.target.result));
@@ -330,7 +330,7 @@ History.addProvider("indexedDB", (function () {
 
 	class SimpleTransaction {
 		constructor(oncomplete, onerror, readOnly) {
-			this.transaction = db.transaction(["seen"], readOnly ? "readonly" : "readwrite");
+			this.transaction = db.transaction([seenTable], readOnly ? "readonly" : "readwrite");
 
 			this.transaction.addEventListener("complete", (event) => {
 				if (oncomplete instanceof Function) {
@@ -349,7 +349,7 @@ History.addProvider("indexedDB", (function () {
 
 		getKey(url, hostname, hostnameSpecific) {
 			return new Promise((resolve, reject) => {
-				const objectStore = this.transaction.objectStore("seen");
+				const objectStore = this.transaction.objectStore(seenTable);
 				const index = objectStore.index(hostnameSpecific ? "url, hostname" : "url");
 				const request = index.getKey(hostnameSpecific ? [url, hostname] : url);
 
