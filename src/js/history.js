@@ -16,40 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-class SeenEvent {
-	constructor() {
-		this.listeners = [ ];
-	}
-
-	get subscribers() {
-		return this.listeners.length;
-	}
-
-	addListener(callback) {
-		if (callback instanceof Function && this.listeners.indexOf(callback) == -1) {
-			this.listeners.push(callback);
-		}
-	}
-
-	removeListener(callback) {
-		const index = this.listeners.indexOf(callback);
-
-		if (index > -1) {
-			this.listeners.splice(index, 1);
-		}
-	}
-
-	raiseEvent(...args) {
-		for (const listener of this.listeners) {
-			listener(...args);
-		}
-	}
-}
-
 const History = (() => {
 	let provider = null;
 	const providers = { };
-	const seenEvent = new SeenEvent();
+	const listeners = [ ];
 
 	function addProvider(name, providerObject) {
 		providers[name] = providerObject;
@@ -75,15 +45,23 @@ const History = (() => {
 	}
 
 	function addListener(callback) {
-		seenEvent.addListener(callback);
+		if (callback instanceof Function && listeners.indexOf(callback) == -1) {
+			listeners.push(callback);
+		}
 	}
 
 	function removeListener(callback) {
-		seenEvent.removeListener(callback);
+		const index = listeners.indexOf(callback);
+
+		if (index > -1) {
+			listeners.splice(index, 1);
+		}
 	}
 
 	function raiseEvent(...args) {
-		seenEvent.raiseEvent(...args);
+		for (const listener of listeners) {
+			listener(...args);
+		}
 	}
 
 	function checkSeen(url, hostname, hostnameSpecific) {
