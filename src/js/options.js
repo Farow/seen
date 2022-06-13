@@ -309,6 +309,7 @@ function SitesInput(sites) {
 		sites[exampleName] = newSite;
 
 		const siteDetails = new SiteDetails(exampleName, newSite);
+		siteDetails.element.open = true;
 		siteDetails.onSiteNameChanged = site_onSiteNameChanged;
 		siteDetails.onSiteKeyChanged = site_onSiteKeyChanged;
 		siteDetails.onSiteRemoved = site_onSiteRemoved;
